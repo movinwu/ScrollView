@@ -244,7 +244,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   scrollRect: {fileID: 0}
-  itemLayout: 0
+  itemLayout: 6
   itemCountOneLine: 3
   itemPrefabs:
   - {fileID: 2176432049083672259, guid: 9489a199f853ba24a885a1f01198f1cd, type: 3}

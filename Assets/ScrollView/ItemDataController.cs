@@ -6,7 +6,7 @@ using UnityEngine;
 namespace AsyncScrollView
 {
     /// <summary>
-    /// 数据管理器基类，负责管理滑动列表下的元素数据的新建、刷新、销毁等逻辑
+    /// 数据管理器类，负责管理滑动列表下的元素数据的新建、刷新、销毁等逻辑
     /// </summary>
     internal class ItemDataController
     {
@@ -90,11 +90,37 @@ namespace AsyncScrollView
         /// </summary>
         private (float width, float height) _maxSizeCache;
 
+        /// <summary>
+        /// 是否正在自动滚动
+        /// </summary>
+        private bool _isAutoScrolling = false;
+
+        /// <summary>
+        /// 上次自动滚动位置
+        /// </summary>
+        private float _lastAutoScrollingPosition = 0f;
+
+        /// <summary>
+        /// 自动滚动目标位置
+        /// </summary>
+        private float _autoScrollingTargetPosition = 0f;
+
+        /// <summary>
+        /// 自动滚动速度
+        /// </summary>
+        private float _autoScrollingSpeed = 0f;
+
+        /// <summary>
+        /// 自动滚动完成回调
+        /// </summary>
+        private Action<bool> _onAutoScrollingCompleted = null;
+
         public void Init(ScrollView scrollView, int startIndex)
         {
             _isInited = false;
             _scrollView = scrollView;
             _itemDataRoot = _scrollView.RootTransform;
+            _isAutoScrolling = false; // 中断任何可能的自动滚动任务
 
             if (null == _scrollView
                 || null == _scrollView.scrollRect
@@ -452,24 +478,281 @@ namespace AsyncScrollView
             RefreshAllItemInstance().Forget(OnException);
         }
 
-        public void RefreshSingle(int itemIndex)
+        /// <summary>
+        /// 刷新单个item数据
+        /// </summary>
+        /// <param name="index">item索引</param>
+        public void RefreshSingle(int index)
         {
-            throw new System.NotImplementedException();
+            // 下标范围检查
+            if (index < 0
+                || index >= Data.ItemCount
+                || _itemData.Count <= 0
+                || _itemData.First.Value.DataIndex > index
+                || _itemData.Last.Value.DataIndex < index)
+            {
+                return;
+            }
+
+            // 根据下标确定遍历方向
+            var firstIndex = _itemData.First.Value.DataIndex;
+            var lastIndex = _itemData.Last.Value.DataIndex;
+            if (index - firstIndex > lastIndex - index)
+            {
+                // 从后往前遍历
+                var item = _itemData.Last;
+                while (null != item)
+                {
+                    if (item.Value.DataIndex == index)
+                    {
+                        item.Value.RefreshInstance();
+                        return;
+                    }
+
+                    item = item.Previous;
+                }
+            }
+            else
+            {
+                // 从前往后遍历
+                var item = _itemData.First;
+                while (null != item)
+                {
+                    if (item.Value.DataIndex == index)
+                    {
+                        item.Value.RefreshInstance();
+                        return;
+                    }
+
+                    item = item.Next;
+                }
+            }
         }
 
+        /// <summary>
+        /// 刷新所有item数据
+        /// </summary>
         public void RefreshAll()
         {
-            throw new System.NotImplementedException();
+            var item = _itemData.First;
+            while (null != item)
+            {
+                item.Value.RefreshInstance();
+                item = item.Next;
+            }
         }
 
-        public void JumpToIndex()
+        /// <summary>
+        /// 跳转到指定索引位置
+        /// </summary>
+        /// <param name="index">item索引</param>
+        /// <param name="viewportOffset">viewport偏移</param>
+        /// <param name="itemOffset">item偏移</param>
+        public void JumpToIndex(int index, float viewportOffset, float itemOffset)
         {
-            throw new System.NotImplementedException();
+            // 计算跳转位置
+            var position = CalculateItemJumpPosition(index, viewportOffset, itemOffset);
+            // 直接设置content位置
+            SetContentPosition(position);
         }
 
-        public void MoveDistance()
+        /// <summary>
+        /// 移动到指定索引位置
+        /// </summary>
+        /// <param name="index">item索引</param>
+        /// <param name="viewportOffset">viewport偏移</param>
+        /// <param name="itemOffset">item偏移</param>
+        /// <param name="speed">移动速度</param>
+        /// <param name="onCompleted">移动完成回调</param>
+        public void MoveToIndexBySpeed(int index, float viewportOffset, float itemOffset, float speed,
+            Action<bool> onCompleted)
         {
-            throw new System.NotImplementedException();
+            // 计算跳转位置
+            var position = CalculateItemJumpPosition(index, viewportOffset, itemOffset);
+            // 当前滚动位置
+            switch (Data.ItemLayout)
+            {
+                case EScrollViewItemLayout.Left2Right_Up2Down:
+                case EScrollViewItemLayout.Right2Left_Up2Down:
+                case EScrollViewItemLayout.Left2Right_Down2Up:
+                case EScrollViewItemLayout.Right2Left_Down2Up:
+                    _lastAutoScrollingPosition = _visibleWindow.position.y;
+                    break;
+                case EScrollViewItemLayout.Up2Down_Left2Right:
+                case EScrollViewItemLayout.Down2Up_Left2Right:
+                case EScrollViewItemLayout.Up2Down_Right2Left:
+                case EScrollViewItemLayout.Down2Up_Right2Left:
+                    _lastAutoScrollingPosition = _visibleWindow.position.x;
+                    break;
+            }
+
+            _autoScrollingTargetPosition = position;
+            _autoScrollingSpeed = speed;
+            _onAutoScrollingCompleted = onCompleted;
+            // 设置自动滚动生效
+            _isAutoScrolling = true;
+        }
+        
+        /// <summary>
+        /// 指定时间移动到指定索引位置
+        /// </summary>
+        /// <param name="index">item索引</param>
+        /// <param name="viewportOffset">viewport偏移</param>
+        /// <param name="itemOffset">item偏移</param>
+        /// <param name="time">移动时间</param>
+        /// <param name="onCompleted">移动完成回调</param>
+        public void MoveToIndexByTime(int index, float viewportOffset, float itemOffset, float time, Action<bool> onCompleted)
+        {
+            // 时间小于等于0，直接走跳转
+            if (time <= 0f)
+            {
+                JumpToIndex(index, viewportOffset, itemOffset);
+                onCompleted?.Invoke(true);
+                return;
+            }
+            
+            // 计算跳转位置
+            var position = CalculateItemJumpPosition(index, viewportOffset, itemOffset);
+            // 当前滚动位置
+            switch (Data.ItemLayout)
+            {
+                case EScrollViewItemLayout.Left2Right_Up2Down:
+                case EScrollViewItemLayout.Right2Left_Up2Down:
+                case EScrollViewItemLayout.Left2Right_Down2Up:
+                case EScrollViewItemLayout.Right2Left_Down2Up:
+                    _lastAutoScrollingPosition = _visibleWindow.position.y;
+                    break;
+                case EScrollViewItemLayout.Up2Down_Left2Right:
+                case EScrollViewItemLayout.Down2Up_Left2Right:
+                case EScrollViewItemLayout.Up2Down_Right2Left:
+                case EScrollViewItemLayout.Down2Up_Right2Left:
+                    _lastAutoScrollingPosition = _visibleWindow.position.x;
+                    break;
+            }
+
+            _autoScrollingTargetPosition = position;
+            _autoScrollingSpeed = Mathf.Abs(position - _lastAutoScrollingPosition) / time;
+            _onAutoScrollingCompleted = onCompleted;
+            // 设置自动滚动生效
+            _isAutoScrolling = true;
+        }
+
+        /// <summary>
+        /// 计算item跳转位置
+        /// </summary>
+        /// <param name="index">索引</param>
+        /// <param name="viewportOffset">viewport偏移</param>
+        /// <param name="itemOffset">item偏移</param>
+        /// <returns></returns>
+        private float CalculateItemJumpPosition(int index, float viewportOffset, float itemOffset)
+        {
+            var position = 0f;
+            (float, float) heightOrWidth;
+            // 获取item位置
+            switch (Data.ItemLayout)
+            {
+                case EScrollViewItemLayout.Left2Right_Up2Down:
+                case EScrollViewItemLayout.Right2Left_Up2Down:
+                    position = _itemYPositionCache[index / Data.ItemCountOneLine];
+                    heightOrWidth = _itemHeightCache[index / Data.ItemCountOneLine];
+                    position -= heightOrWidth.Item1;
+                    position += itemOffset;
+                    position -= viewportOffset;
+                    // 判断越界
+                    if (position < 0f)
+                    {
+                        position = 0f;
+                    }
+                    else if (position > _maxSizeCache.height - _visibleWindow.size.y)
+                    {
+                        position = _maxSizeCache.height - _visibleWindow.size.y;
+                    }
+
+                    break;
+                case EScrollViewItemLayout.Left2Right_Down2Up:
+                case EScrollViewItemLayout.Right2Left_Down2Up:
+                    position = _itemYPositionCache[index / Data.ItemCountOneLine];
+                    heightOrWidth = _itemHeightCache[index / Data.ItemCountOneLine];
+                    position -= heightOrWidth.Item2;
+                    position += itemOffset;
+                    position -= viewportOffset;
+                    // 判断越界
+                    if (position < 0f)
+                    {
+                        position = 0f;
+                    }
+                    else if (position > _maxSizeCache.height - _visibleWindow.size.y)
+                    {
+                        position = _maxSizeCache.height - _visibleWindow.size.y;
+                    }
+
+                    break;
+                case EScrollViewItemLayout.Up2Down_Left2Right:
+                case EScrollViewItemLayout.Down2Up_Left2Right:
+                    position = _itemXPositionCache[index / Data.ItemCountOneLine];
+                    heightOrWidth = _itemWidthCache[index / Data.ItemCountOneLine];
+                    position -= heightOrWidth.Item1;
+                    position += itemOffset;
+                    position -= viewportOffset;
+                    // 判断越界
+                    if (position < 0f)
+                    {
+                        position = 0f;
+                    }
+                    else if (position > _maxSizeCache.width - _visibleWindow.size.x)
+                    {
+                        position = _maxSizeCache.width - _visibleWindow.size.x;
+                    }
+
+                    break;
+                case EScrollViewItemLayout.Up2Down_Right2Left:
+                case EScrollViewItemLayout.Down2Up_Right2Left:
+                    position = _itemXPositionCache[index / Data.ItemCountOneLine];
+                    heightOrWidth = _itemWidthCache[index / Data.ItemCountOneLine];
+                    position -= heightOrWidth.Item2;
+                    position += itemOffset;
+                    position -= viewportOffset;
+                    // 判断越界
+                    if (position < 0f)
+                    {
+                        position = 0f;
+                    }
+                    else if (position > _maxSizeCache.width - _visibleWindow.size.x)
+                    {
+                        position = _maxSizeCache.width - _visibleWindow.size.x;
+                    }
+
+                    break;
+            }
+
+            return position;
+        }
+
+        /// <summary>
+        /// 设置content位置
+        /// </summary>
+        /// <param name="position"></param>
+        private void SetContentPosition(float position)
+        {
+            switch (Data.ItemLayout)
+            {
+                case EScrollViewItemLayout.Left2Right_Up2Down:
+                case EScrollViewItemLayout.Right2Left_Up2Down:
+                    _contentCache.anchoredPosition = new Vector2(0f, position);
+                    break;
+                case EScrollViewItemLayout.Left2Right_Down2Up:
+                case EScrollViewItemLayout.Right2Left_Down2Up:
+                    _contentCache.anchoredPosition = new Vector2(0f, -position);
+                    break;
+                case EScrollViewItemLayout.Up2Down_Left2Right:
+                case EScrollViewItemLayout.Down2Up_Left2Right:
+                    _contentCache.anchoredPosition = new Vector2(-position, 0f);
+                    break;
+                case EScrollViewItemLayout.Up2Down_Right2Left:
+                case EScrollViewItemLayout.Down2Up_Right2Left:
+                    _contentCache.anchoredPosition = new Vector2(position, 0f);
+                    break;
+            }
         }
 
         /// <summary>
@@ -684,30 +967,133 @@ namespace AsyncScrollView
             // 查看当前缓存窗口位置和实际位置的偏移
             var currentPosition = _contentCache.anchoredPosition;
             var windowPosition = _visibleWindow.position;
+
+            // 回调调用
+            bool isInvokeAutoScrollingCallback = false;
+            bool isAutoScrollingCompleted = false;
+
+            // 自动滚动处理
+            if (_isAutoScrolling)
+            {
+                // 直接停止自动滚动的情况
+                if (_autoScrollingSpeed <= 0f // 滚动速度小于等于0
+                    || Mathf.Approximately(_lastAutoScrollingPosition, _autoScrollingTargetPosition)) // 当前滚动位置和目标位置相同
+                {
+                    _isAutoScrolling = false;
+                    isInvokeAutoScrollingCallback = true;
+                    isAutoScrollingCompleted = true;
+                }
+                else
+                {
+                    var autoScrollPosition = 0f;
+                    switch (Data.ItemLayout)
+                    {
+                        case EScrollViewItemLayout.Left2Right_Up2Down:
+                        case EScrollViewItemLayout.Right2Left_Up2Down:
+                            autoScrollPosition = currentPosition.y;
+                            break;
+                        case EScrollViewItemLayout.Left2Right_Down2Up:
+                        case EScrollViewItemLayout.Right2Left_Down2Up:
+                            autoScrollPosition = -currentPosition.y;
+                            break;
+                        case EScrollViewItemLayout.Up2Down_Left2Right:
+                        case EScrollViewItemLayout.Down2Up_Left2Right:
+                            autoScrollPosition = -currentPosition.x;
+                            break;
+                        case EScrollViewItemLayout.Up2Down_Right2Left:
+                        case EScrollViewItemLayout.Down2Up_Right2Left:
+                            autoScrollPosition = currentPosition.x;
+                            break;
+                    }
+
+                    if (Mathf.Approximately(autoScrollPosition, _lastAutoScrollingPosition))
+                    {
+                        // 计算下一个自动滚动的位置
+                        var time = Time.deltaTime;
+                        var distance = _autoScrollingSpeed * time;
+                        // 滚动方向
+                        if (_autoScrollingTargetPosition > _lastAutoScrollingPosition)
+                        {
+                            _lastAutoScrollingPosition += distance;
+                            if (_lastAutoScrollingPosition > _autoScrollingTargetPosition)
+                            {
+                                _lastAutoScrollingPosition = _autoScrollingTargetPosition;
+                                _isAutoScrolling = false;
+                                isInvokeAutoScrollingCallback = true;
+                                isAutoScrollingCompleted = true;
+                            }
+                        }
+                        else
+                        {
+                            _lastAutoScrollingPosition -= distance;
+                            if (_lastAutoScrollingPosition < _autoScrollingTargetPosition)
+                            {
+                                _lastAutoScrollingPosition = _autoScrollingTargetPosition;
+                                _isAutoScrolling = false;
+                                isInvokeAutoScrollingCallback = true;
+                                isAutoScrollingCompleted = true;
+                            }
+                        }
+
+                        // 设置content位置
+                        SetContentPosition(_lastAutoScrollingPosition);
+                        // 更新content位置
+                        switch (Data.ItemLayout)
+                        {
+                            case EScrollViewItemLayout.Left2Right_Up2Down:
+                            case EScrollViewItemLayout.Right2Left_Up2Down:
+                                currentPosition.y = _lastAutoScrollingPosition;
+                                break;
+                            case EScrollViewItemLayout.Left2Right_Down2Up:
+                            case EScrollViewItemLayout.Right2Left_Down2Up:
+                                currentPosition.y = -_lastAutoScrollingPosition;
+                                break;
+                            case EScrollViewItemLayout.Up2Down_Left2Right:
+                            case EScrollViewItemLayout.Down2Up_Left2Right:
+                                currentPosition.x = -_lastAutoScrollingPosition;
+                                break;
+                            case EScrollViewItemLayout.Up2Down_Right2Left:
+                            case EScrollViewItemLayout.Down2Up_Right2Left:
+                                currentPosition.x = _lastAutoScrollingPosition;
+                                break;
+                        }
+                    }
+                    // 记录滚动位置和当前位置不同，则列表被拖动或以其他方式移动，直接结束滚动
+                    else
+                    {
+                        _isAutoScrolling = false;
+                        isInvokeAutoScrollingCallback = true;
+                        isAutoScrollingCompleted = false;
+                    }
+                }
+            }
+
+            // 偏移计算
             float offset = 0f;
             switch (Data.ItemLayout)
             {
                 case EScrollViewItemLayout.Left2Right_Up2Down:
                 case EScrollViewItemLayout.Right2Left_Up2Down:
-                    offset = Mathf.Abs(currentPosition.y - windowPosition.y);
+                    offset = currentPosition.y - windowPosition.y;
                     break;
                 case EScrollViewItemLayout.Left2Right_Down2Up:
                 case EScrollViewItemLayout.Right2Left_Down2Up:
                     currentPosition.y = -currentPosition.y;
-                    offset = Mathf.Abs(currentPosition.y - windowPosition.y);
+                    offset = currentPosition.y - windowPosition.y;
                     break;
                 case EScrollViewItemLayout.Up2Down_Left2Right:
                 case EScrollViewItemLayout.Down2Up_Left2Right:
                     currentPosition.x = -currentPosition.x;
-                    offset = Mathf.Abs(currentPosition.x - windowPosition.x);
+                    offset = currentPosition.x - windowPosition.x;
                     break;
                 case EScrollViewItemLayout.Up2Down_Right2Left:
                 case EScrollViewItemLayout.Down2Up_Right2Left:
-                    offset = Mathf.Abs(currentPosition.x - windowPosition.x);
+                    offset = currentPosition.x - windowPosition.x;
                     break;
             }
-            // 偏移量大于等于1，则更新
-            if (offset >= 1f)
+
+            // 没有偏移量，不更新
+            if (!Mathf.Approximately(offset, 0f))
             {
                 // 更新窗口位置
                 _visibleWindow.position = currentPosition;
@@ -1057,7 +1443,7 @@ namespace AsyncScrollView
                         endIndex = Mathf.Min(endIndex + Data.ItemCountOneLine - 1, Data.ItemCount - 1);
                         break;
                 }
-                
+
                 ScrollViewItemData itemData = null;
                 bool changed = false;
                 // 比较开始下标和结束下标，先走回收，再走新增，否则缓存池中数量会一直增加
@@ -1067,12 +1453,14 @@ namespace AsyncScrollView
                     DespawnFirstItem();
                     changed = true;
                 }
+
                 while (endIndex < cachedEndIndex)
                 {
                     cachedEndIndex--;
                     DespawnLastItem();
                     changed = true;
                 }
+
                 while (startIndex < cachedStartIndex)
                 {
                     cachedStartIndex--;
@@ -1080,10 +1468,12 @@ namespace AsyncScrollView
                     {
                         continue;
                     }
+
                     var item = SpawnItem(cachedStartIndex);
                     _itemData.AddFirst(item);
                     changed = true;
                 }
+
                 while (endIndex > cachedEndIndex)
                 {
                     cachedEndIndex++;
@@ -1091,16 +1481,24 @@ namespace AsyncScrollView
                     {
                         continue;
                     }
+
                     var item = SpawnItem(cachedEndIndex);
                     _itemData.AddLast(item);
                     changed = true;
                 }
-                
+
                 // 发生变化，做一次刷新
                 if (changed)
                 {
                     RefreshAllItemInstance().Forget(OnException);
                 }
+            }
+            
+            // 自动滚动回调调用
+            if (isInvokeAutoScrollingCallback)
+            {
+                _onAutoScrollingCompleted?.Invoke(isAutoScrollingCompleted);
+                _onAutoScrollingCompleted = null;
             }
         }
     }

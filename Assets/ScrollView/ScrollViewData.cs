@@ -29,11 +29,6 @@ namespace AsyncScrollView
         public int Col;
 
         /// <summary>
-        /// 是否无限循环
-        /// </summary>
-        public bool IsLoop;
-
-        /// <summary>
         /// 获取item高度
         /// </summary>
         public Func<(int row, int totalRow), (float upHeight, float downHeight)> GetItemHeight;
@@ -89,7 +84,6 @@ namespace AsyncScrollView
         /// <param name="onItemBindData">item绑定数据显示时调用</param>
         /// <param name="onItemUnbindData">item解绑数据显示时调用</param>
         /// <param name="itemLayout">item布局</param>
-        /// <param name="isLoop">是否循环列表</param>
         /// <param name="frameInstantiateCount">每帧实例化数量</param>
         /// <param name="getItemHeight">获取item高度委托</param>
         /// <param name="getItemWidth">获取item宽度委托</param>
@@ -106,7 +100,6 @@ namespace AsyncScrollView
             Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemHeight,
             Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemWidth,
             int frameInstantiateCount,
-            bool isLoop,
             Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex)
         {
             ItemCount = itemCount;
@@ -114,7 +107,6 @@ namespace AsyncScrollView
             Col = col;
             ItemCountOneLine = itemCountOneLine;
             ItemPrefabs = itemPrefabs;
-            IsLoop = isLoop;
             GetItemHeight = getItemHeight;
             GetItemWidth = getItemWidth;
             GetItemPrefabIndex = getItemPrefabIndex;

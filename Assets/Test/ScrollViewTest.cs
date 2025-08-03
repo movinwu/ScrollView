@@ -11,6 +11,17 @@ public class ScrollViewTest : MonoBehaviour
     void Start()
     {
         scrollView.Init(500, OnItemBindData, GetItemWidth, GetItemHeight, 5, getItemPrefabIndex: GetItemPrefabIndex);
+        StartCoroutine(Cor());
+    }
+
+    private IEnumerator Cor()
+    {
+        scrollView.JumpToIndexByOffsetOffset(160);
+        yield return new WaitForSeconds(3f);
+        scrollView.MoveToIndexBySpeedOffsetOffset(105, 500f, onMoveCompleted: success =>
+        {
+            Debug.Log("MoveToIndexBySpeedOffsetOffset: " + success);
+        });
     }
 
     private int GetItemPrefabIndex((GameObject[] itemPrefabs, int dataIndex) arg)
