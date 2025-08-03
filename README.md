@@ -104,18 +104,33 @@ void Init(
 
 #### `JumpToIndex`
 ```csharp
-void JumpToIndex(int index, float offset = 0)
+void JumpToIndexByPercentPercent(int index, float viewportPercent = 0f, float itemPercent = 0f)
+void JumpToIndexByPercentOffset(int index, float viewportPercent = 0f, float itemOffset = 0f)
+void JumpToIndexByOffsetPercent(int index, float viewportOffset = 0f, float itemPercent = 0f)
+void JumpToIndexByOffsetOffset(int index, float viewportOffset = 0f, float itemOffset = 0f)
 ```
 立即跳转到指定索引位置。
 
 #### `MoveToIndex`
 ```csharp
-void MoveToIndex(
-    int index, 
-    float speed, 
-    float offset = 0, 
-    Action<bool> onMoveCompleted = null
-)
+void MoveToIndexBySpeedPercentPercent(int index, float speed, Action<bool> onMoveCompleted = null,
+            float viewportPercent = 0f, float itemPercent = 0f)
+void MoveToIndexBySpeedPercentOffset(int index, float speed, Action<bool> onMoveCompleted = null,
+            float viewportPercent = 0f, float itemOffset = 0f)
+void MoveToIndexBySpeedOffsetPercent(int index, float speed, Action<bool> onMoveCompleted = null,
+            float viewportOffset = 0f, float itemPercent = 0f)
+void MoveToIndexBySpeedOffsetOffset(int index, float speed, Action<bool> onMoveCompleted = null,
+            float viewportOffset = 0f, float itemOffset = 0f)
+void MoveToIndexByTimePercentPercent(int index, float time, Action<bool> onMoveCompleted = null,
+            float viewportPercent = 0f, float itemPercent = 0f)
+void MoveToIndexByTimePercentOffset(int index, float time, Action<bool> onMoveCompleted = null,
+            float viewportPercent = 0f, float itemOffset = 0f)
+void MoveToIndexByTimeOffsetPercent(int index, float time, Action<bool> onMoveCompleted = null,
+            float viewportOffset = 0f, float itemPercent = 0f)
+void MoveToIndexByTimeOffsetOffset(int index, float time, Action<bool> onMoveCompleted = null,
+            float viewportOffset = 0f, float itemOffset = 0f)
+```
+平滑移动到指定索引位置。
 ```
 平滑移动到指定索引位置。
 
@@ -125,13 +140,7 @@ void MoveToIndex(
 - `getItemWidth`: 动态获取item宽度
 - `getItemHeight`: 动态获取item高度
 - `getItemPrefabIndex`: 多预制体模板时选择预制体索引
-
-## 注意事项
-
-1. 确保所有预制体都有相同的锚点设置
-2. 动态尺寸回调需要返回正确的尺寸值
-3. 大量数据时建议使用对象池优化性能
-4. 跳转和移动操作不要在短时间内频繁调用
+- `onMoveCompleted`: 当平滑移动结束后调用，参数为是否成功移动到指定索引位置
 
 ## 示例场景
 

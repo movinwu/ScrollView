@@ -102,18 +102,31 @@ Initializes the ScrollView with basic parameters and callbacks.
 
 #### `JumpToIndex`
 ```csharp
-void JumpToIndex(int index, float offset = 0)
+void JumpToIndexByPercentPercent(int index, float viewportPercent = 0f, float itemPercent = 0f)
+void JumpToIndexByPercentOffset(int index, float viewportPercent = 0f, float itemOffset = 0f)
+void JumpToIndexByOffsetPercent(int index, float viewportOffset = 0f, float itemPercent = 0f)
+void JumpToIndexByOffsetOffset(int index, float viewportOffset = 0f, float itemOffset = 0f)
 ```
 Jumps immediately to the specified index position.
 
 #### `MoveToIndex`
 ```csharp
-void MoveToIndex(
-    int index, 
-    float speed, 
-    float offset = 0, 
-    Action<bool> onMoveCompleted = null
-)
+void MoveToIndexBySpeedPercentPercent(int index, float speed, Action<bool> onMoveCompleted = null,
+            float viewportPercent = 0f, float itemPercent = 0f)
+void MoveToIndexBySpeedPercentOffset(int index, float speed, Action<bool> onMoveCompleted = null,
+            float viewportPercent = 0f, float itemOffset = 0f)
+void MoveToIndexBySpeedOffsetPercent(int index, float speed, Action<bool> onMoveCompleted = null,
+            float viewportOffset = 0f, float itemPercent = 0f)
+void MoveToIndexBySpeedOffsetOffset(int index, float speed, Action<bool> onMoveCompleted = null,
+            float viewportOffset = 0f, float itemOffset = 0f)
+void MoveToIndexByTimePercentPercent(int index, float time, Action<bool> onMoveCompleted = null,
+            float viewportPercent = 0f, float itemPercent = 0f)
+void MoveToIndexByTimePercentOffset(int index, float time, Action<bool> onMoveCompleted = null,
+            float viewportPercent = 0f, float itemOffset = 0f)
+void MoveToIndexByTimeOffsetPercent(int index, float time, Action<bool> onMoveCompleted = null,
+            float viewportOffset = 0f, float itemPercent = 0f)
+void MoveToIndexByTimeOffsetOffset(int index, float time, Action<bool> onMoveCompleted = null,
+            float viewportOffset = 0f, float itemOffset = 0f)
 ```
 Smoothly moves to the specified index position.
 
@@ -123,13 +136,7 @@ Smoothly moves to the specified index position.
 - `getItemWidth`: Dynamically gets item width
 - `getItemHeight`: Dynamically gets item height
 - `getItemPrefabIndex`: Selects prefab index for multiple prefab templates
-
-## Notes
-
-1. Ensure all prefabs have the same anchor settings
-2. Dynamic size callbacks must return correct size values
-3. Use object pooling for large datasets to optimize performance
-4. Avoid frequent jump/move operations in short time intervals
+- `onMoveCompleted`: Called when the movement is completed, with a parameter indicating whether the movement was successful
 
 ## Example Scene
 
