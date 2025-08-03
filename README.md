@@ -1,1 +1,142 @@
-# ScrollViewExtension
+# Unity ScrollView 封装组件
+
+[English Version](README_EN.md)
+
+一个高性能、可定制的Unity ScrollView封装组件，支持无限滚动、多种布局方式和动态尺寸。
+
+## 功能特性
+
+- ✅ 高性能无限滚动
+- ✅ 支持分帧实例化列表项，避免刷新时卡顿
+- ✅ 支持水平和垂直布局
+- ✅ 动态item尺寸控制，通过委托的方式控制每行（列）的item尺寸
+- ✅ 多种跳转方式（立即跳转/平滑移动），跳转时支持设置百分比偏移和绝对偏移
+- ✅ 多预制体模板支持
+- ✅ 内置对象池管理，支持多种缓存池回收方式
+- ✅ 一个脚本支持简单列表和多行（列）列表，使用更简单
+- ✅ 使用列表元素无需继承基类，使用方法更为简单灵活
+
+## 对比SuperScrollView
+
+在UGUI的滑动列表组件封装中，SuperScrollView是使用最广泛的，但是它存在以下问题：
+
+- ❌ 不支持分帧实例化列表项
+- ❌ 简单滑动列表和多行（列）的列表对应脚本不同，使用方法不够灵活
+- ❌ 使用时列表元素需要继承列表元素基类做刷新，使用方法不够简单
+- ❌ 内置对象池只支持隐藏的回收方式，这种方式有一定的性能损耗
+- ❌ 滑动列表的实际content区域只比viewport区域稍大，滑动速度过快时滑动会卡顿
+- ❌ 跳转或自动滚动时不支持设置偏移，如果单个item尺寸超过viewport区域大小，跳转或自动滚动只能滚动到每个item开始的位置
+- ❌ 不支持列表项放回缓存池或销毁时回调，无法在列表项放回缓存池或销毁时进行一些清理操作
+- ❌ 收费插件
+
+这个滑动列表组件解决了以上问题，但是同样存在以下问题：
+
+- ❌ 采用预先计算content尺寸的方式，当数据量较大（例如10000个item）时，初始化的那一帧耗时较长，容易卡顿
+- ❌ 不支持无限滚动
+- ❌ 依赖UniTask插件
+- ❌ 当前不支持snap功能
+
+建议根据实际需求选择合适的滑动列表组件。
+
+## 安装
+
+1. 将`Assets/ScrollView`目录复制到您的Unity项目中
+2. 确保已安装UniTask依赖（位于`Assets/Thirdly/UniTask`）
+
+## 快速开始
+
+```csharp
+using UnityEngine;
+using TMPro;
+
+public class MyScrollView : MonoBehaviour
+{
+    [SerializeField] private ScrollView scrollView;
+    
+    void Start()
+    {
+        // 初始化ScrollView
+        scrollView.Init(
+            itemCount: 100, 
+            onBindData: OnItemBindData,
+            getItemWidth: GetItemWidth,
+            getItemHeight: GetItemHeight,
+            startIndex: 0
+        );
+    }
+
+    // 数据绑定回调
+    private void OnItemBindData((int dataIndex, GameObject itemInstance) obj)
+    {
+        obj.itemInstance.transform.Find("Text").GetComponent<TMP_Text>().text = obj.dataIndex.ToString();
+    }
+
+    // 动态宽度回调
+    private (float upHeight, float downHeight) GetItemWidth((int row, int totalRow) arg)
+    {
+        return (100, 100); // 固定宽度
+    }
+
+    // 动态高度回调
+    private (float leftWidth, float rightWidth) GetItemHeight((int col, int totalCol) arg)
+    {
+        return (50, 50); // 固定高度
+    }
+}
+```
+
+## API文档
+
+### 核心方法
+
+#### `Init`
+```csharp
+void Init(
+    int itemCount, 
+    Action<(int dataIndex, GameObject itemInstance)> onBindData,
+    Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
+    Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
+    int startIndex = 0,
+    Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
+)
+```
+初始化ScrollView，设置基本参数和回调。
+
+#### `JumpToIndex`
+```csharp
+void JumpToIndex(int index, float offset = 0)
+```
+立即跳转到指定索引位置。
+
+#### `MoveToIndex`
+```csharp
+void MoveToIndex(
+    int index, 
+    float speed, 
+    float offset = 0, 
+    Action<bool> onMoveCompleted = null
+)
+```
+平滑移动到指定索引位置。
+
+### 回调说明
+
+- `onBindData`: 当需要绑定数据到item时调用
+- `getItemWidth`: 动态获取item宽度
+- `getItemHeight`: 动态获取item高度
+- `getItemPrefabIndex`: 多预制体模板时选择预制体索引
+
+## 注意事项
+
+1. 确保所有预制体都有相同的锚点设置
+2. 动态尺寸回调需要返回正确的尺寸值
+3. 大量数据时建议使用对象池优化性能
+4. 跳转和移动操作不要在短时间内频繁调用
+
+## 示例场景
+
+查看`Assets/Test/ScrollView.unity`示例场景了解完整用法。
+
+## 许可证
+
+MIT License

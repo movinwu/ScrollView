@@ -35,11 +35,6 @@ namespace AsyncScrollView
         [SerializeField, Header("item预制体")] internal GameObject[] itemPrefabs;
 
         /// <summary>
-        /// 是否循环列表
-        /// </summary>
-        [SerializeField, Header("是否无限循环列表")] internal bool isLoop;
-
-        /// <summary>
         /// 每帧实例化item最大数量
         /// </summary>
         [SerializeField, Header("每帧实例化最大数量")] internal int frameInstantiateCount = 2;
@@ -174,13 +169,8 @@ namespace AsyncScrollView
             {
                 scrollRect.horizontal = false;
                 scrollRect.horizontalScrollbar = null;
-                // 2.无限滑动列表不支持滑动条
-                if (isLoop)
-                {
-                    scrollRect.verticalScrollbar = null;
-                }
 
-                // 3. 计算行数和列数等相关参数
+                // 2. 计算行数和列数等相关参数
                 col = itemCountOneLine;
                 row = itemCount / itemCountOneLine + (itemCount % itemCountOneLine > 0 ? 1 : 0);
             }
@@ -188,18 +178,13 @@ namespace AsyncScrollView
             {
                 scrollRect.horizontal = true;
                 scrollRect.verticalScrollbar = null;
-                // 2.无限滑动列表不支持滑动条
-                if (isLoop)
-                {
-                    scrollRect.horizontalScrollbar = null;
-                }
 
-                // 3. 计算行数和列数等相关参数
+                // 2. 计算行数和列数等相关参数
                 row = itemCountOneLine;
                 col = itemCount / itemCountOneLine + (itemCount % itemCountOneLine > 0 ? 1 : 0);
             }
 
-            // 4. 初始化数据
+            // 3. 初始化数据
             Data ??= new ScrollViewData();
             Data.Init(
                 itemCount,
@@ -215,7 +200,7 @@ namespace AsyncScrollView
                 frameInstantiateCount,
                 getItemPrefabIndex);
 
-            // 5. 初始化根节点
+            // 4. 初始化根节点
             if (null == RootTransform)
             {
                 var root = new GameObject("Root");
@@ -230,13 +215,13 @@ namespace AsyncScrollView
             RootTransform.sizeDelta = Vector2.zero;
             RootTransform.pivot = Vector2.one * 0.5f;
 
-            // 6. 位置控制器创建
+            // 5. 位置控制器创建
             ItemDataController ??= new ItemDataController();
 
-            // 7. 缓存池创建
+            // 6. 缓存池创建
             GameObjectPool ??= new GameObjectPool();
 
-            // 8. 控制器和缓存池初始化
+            // 7. 控制器和缓存池初始化
             ItemDataController.DespawnAllItem();
             GameObjectPool.Init(Data, itemDespawnType);
             ItemDataController.Init(this, startIndex);
@@ -280,9 +265,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -305,9 +288,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -329,9 +310,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -353,9 +332,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -380,9 +357,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -408,9 +383,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -434,9 +407,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -460,9 +431,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -487,9 +456,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -515,9 +482,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -541,9 +506,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
@@ -567,9 +530,7 @@ namespace AsyncScrollView
         {
             // 校验下标
             if (null == Data
-                || Data.ItemCount <= 0
-                || (isLoop
-                    && (index < 0 || index >= Data.ItemCount)))
+                || Data.ItemCount <= 0)
             {
                 return;
             }
