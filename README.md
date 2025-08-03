@@ -97,7 +97,7 @@ void Init(
     Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
     Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
     int startIndex = 0,
-            Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+    Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
     Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
 )
 ```
