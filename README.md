@@ -131,8 +131,6 @@ void MoveToIndexByTimeOffsetOffset(int index, float time, Action<bool> onMoveCom
             float viewportOffset = 0f, float itemOffset = 0f)
 ```
 平滑移动到指定索引位置。
-```
-平滑移动到指定索引位置。
 
 ### 回调说明
 
