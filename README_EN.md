@@ -91,10 +91,11 @@ public class MyScrollView : MonoBehaviour
 ```csharp
 void Init(
     int itemCount, 
-    Action<(int dataIndex, GameObject itemInstance)> onBindData,
+    Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
     Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
     Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
     int startIndex = 0,
+    Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
     Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
 )
 ```
@@ -132,7 +133,8 @@ Smoothly moves to the specified index position.
 
 ### Callback Explanation
 
-- `onBindData`: Called when data needs to be bound to an item
+- `onItemBindData`: Called when data needs to be bound to an item
+- `onItemUnbindData`: Called when data needs to be unbound from an item
 - `getItemWidth`: Dynamically gets item width
 - `getItemHeight`: Dynamically gets item height
 - `getItemPrefabIndex`: Selects prefab index for multiple prefab templates

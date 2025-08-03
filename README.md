@@ -58,7 +58,7 @@ public class MyScrollView : MonoBehaviour
         // 初始化ScrollView
         scrollView.Init(
             itemCount: 100, 
-            onBindData: OnItemBindData,
+            onItemBindData: OnItemBindData,
             getItemWidth: GetItemWidth,
             getItemHeight: GetItemHeight,
             startIndex: 0
@@ -97,6 +97,7 @@ void Init(
     Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
     Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
     int startIndex = 0,
+            Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
     Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
 )
 ```
@@ -134,7 +135,8 @@ void MoveToIndexByTimeOffsetOffset(int index, float time, Action<bool> onMoveCom
 
 ### 回调说明
 
-- `onBindData`: 当需要绑定数据到item时调用
+- `onItemBindData`: 当需要绑定数据到item时调用（从缓存池中取出item并显示时调用）
+- `onItemUnbindData`: 当需要解绑数据到item时调用（将item放回缓存池时调用）
 - `getItemWidth`: 动态获取item宽度
 - `getItemHeight`: 动态获取item高度
 - `getItemPrefabIndex`: 多预制体模板时选择预制体索引
