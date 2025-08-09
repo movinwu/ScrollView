@@ -10,12 +10,18 @@ public class ScrollViewTest : MonoBehaviour
     
     void Start()
     {
-        scrollView.Init(500, OnItemBindData, GetItemWidth, GetItemHeight, 5, getItemPrefabIndex: GetItemPrefabIndex);
-        StartCoroutine(Cor());
+        // scrollView.InitOffsetOffset(500, OnItemBindData, GetItemWidth, GetItemHeight, 5, getItemPrefabIndex: GetItemPrefabIndex);
+        scrollView.InitCenter(200, OnItemBindData, _ => (80, 80), _ => (80, 80));
+        // StartCoroutine(Cor());
     }
 
     private IEnumerator Cor()
     {
+        yield return new WaitForSeconds(1f);
+        scrollView.InitOffsetOffset(0, OnItemBindData, GetItemWidth, GetItemHeight, 5, getItemPrefabIndex: GetItemPrefabIndex);
+        yield return new WaitForSeconds(1f);
+        scrollView.InitOffsetOffset(1000, OnItemBindData, GetItemWidth, GetItemHeight, 5, getItemPrefabIndex: GetItemPrefabIndex);
+        yield return new WaitForSeconds(1f);
         scrollView.JumpToIndexByOffsetOffset(160);
         yield return new WaitForSeconds(3f);
         scrollView.MoveToIndexBySpeedOffsetOffset(105, 500f, onMoveCompleted: success =>

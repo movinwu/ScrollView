@@ -70,6 +70,29 @@ namespace AsyncScrollView
 
         #endregion 不序列化
 
+        #region 初始化
+        
+        /// <summary>
+        /// 初始化(中央）
+        /// </summary>
+        /// <param name="itemCount">数据数量</param>
+        /// <param name="onItemBindData">item绑定数据时回调</param>
+        /// <param name="getItemHeight">获取item高度回调</param>
+        /// <param name="getItemWidth">获取item宽度回调</param>
+        /// <param name="onItemUnbindData">item解绑数据时回调</param>
+        /// <param name="getItemPrefabIndex">获取item预制体索引回调</param>
+        public void InitCenter(
+            int itemCount,
+            Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
+            Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemHeight,
+            Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemWidth,
+            Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+            Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null)
+        {
+            PrepareInit(itemCount, onItemBindData, getItemHeight, getItemWidth, onItemUnbindData, getItemPrefabIndex);
+            ItemDataController.Init(this, 0, 0, 0, true);
+        }
+        
         /// <summary>
         /// 初始化
         /// </summary>
@@ -78,16 +101,97 @@ namespace AsyncScrollView
         /// <param name="getItemHeight">获取item高度回调</param>
         /// <param name="getItemWidth">获取item宽度回调</param>
         /// <param name="startIndex">起始索引</param>
+        /// <param name="viewportPercent">视口对齐百分比</param>
+        /// <param name="itemOffset">item偏移量</param>
         /// <param name="onItemUnbindData">item解绑数据时回调</param>
         /// <param name="getItemPrefabIndex">获取item预制体索引回调</param>
-        public void Init(
+        public void InitPercentOffset(
             int itemCount,
             Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
             Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemHeight,
             Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemWidth,
             int startIndex = 0,
+            float viewportPercent = 0,
+            float itemOffset = 0,
             Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
             Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null)
+        {
+            PrepareInit(itemCount, onItemBindData, getItemHeight, getItemWidth, onItemUnbindData, getItemPrefabIndex);
+            var viewportOffset = CalculateViewportOffset(viewportPercent);
+            ItemDataController.Init(this, startIndex, viewportOffset, itemOffset, false);
+        }
+        
+        /// <summary>
+        /// 初始化
+        /// </summary>
+        /// <param name="itemCount">数据数量</param>
+        /// <param name="onItemBindData">item绑定数据时回调</param>
+        /// <param name="getItemHeight">获取item高度回调</param>
+        /// <param name="getItemWidth">获取item宽度回调</param>
+        /// <param name="startIndex">起始索引</param>
+        /// <param name="viewportOffset">视口偏移量</param>
+        /// <param name="itemPercent">item对齐百分比</param>
+        /// <param name="onItemUnbindData">item解绑数据时回调</param>
+        /// <param name="getItemPrefabIndex">获取item预制体索引回调</param>
+        public void InitOffsetPercent(
+            int itemCount,
+            Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
+            Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemHeight,
+            Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemWidth,
+            int startIndex = 0,
+            float viewportOffset = 0,
+            float itemPercent = 0,
+            Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+            Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null)
+        {
+            PrepareInit(itemCount, onItemBindData, getItemHeight, getItemWidth, onItemUnbindData, getItemPrefabIndex);
+            var itemOffset = CalculateItemOffset(startIndex, itemPercent);
+            ItemDataController.Init(this, startIndex, viewportOffset, itemOffset, false);
+        }
+        
+        /// <summary>
+        /// 初始化
+        /// </summary>
+        /// <param name="itemCount">数据数量</param>
+        /// <param name="onItemBindData">item绑定数据时回调</param>
+        /// <param name="getItemHeight">获取item高度回调</param>
+        /// <param name="getItemWidth">获取item宽度回调</param>
+        /// <param name="startIndex">起始索引</param>
+        /// <param name="viewportOffset">视口偏移量</param>
+        /// <param name="itemOffset">item偏移量</param>
+        /// <param name="onItemUnbindData">item解绑数据时回调</param>
+        /// <param name="getItemPrefabIndex">获取item预制体索引回调</param>
+        public void InitOffsetOffset(
+            int itemCount,
+            Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
+            Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemHeight,
+            Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemWidth,
+            int startIndex = 0,
+            float viewportOffset = 0,
+            float itemOffset = 0,
+            Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+            Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null)
+        {
+            PrepareInit(itemCount, onItemBindData, getItemHeight, getItemWidth, onItemUnbindData, getItemPrefabIndex);
+            ItemDataController.Init(this, startIndex, viewportOffset, itemOffset, false);
+        }
+
+        /// <summary>
+        /// 准备初始化
+        /// </summary>
+        /// <param name="itemCount">数据数量</param>
+        /// <param name="onItemBindData">item绑定数据时回调</param>
+        /// <param name="getItemHeight">获取item高度回调</param>
+        /// <param name="getItemWidth">获取item宽度回调</param>
+        /// <param name="onItemUnbindData">item解绑数据时回调</param>
+        /// <param name="getItemPrefabIndex">获取item预制体索引回调</param>
+        private void PrepareInit(
+            int itemCount,
+            Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
+            Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemHeight,
+            Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemWidth,
+            Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData,
+            Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex)
         {
             // 获取scrollRect组件
             scrollRect ??= GetComponent<ScrollRect>();
@@ -98,20 +202,10 @@ namespace AsyncScrollView
             }
 
             // 检验每行数量
-            if (itemCountOneLine <= 0)
-            {
-                Release();
-                if (null != Data)
-                {
-                    Data.ItemCount = 0;
-                }
-
-                scrollRect.content.pivot = Vector2.one * 0.5f;
-                scrollRect.content.anchorMin = Vector2.one * 0.5f;
-                scrollRect.content.anchorMax = Vector2.one * 0.5f;
-                scrollRect.content.sizeDelta = Vector2.zero;
-                return;
-            }
+            itemCountOneLine = Mathf.Max(1, itemCountOneLine);
+            
+            // 检验总数量
+            itemCount = Mathf.Max(0, itemCount);
 
             // 检验每帧实例化数量
             if (frameInstantiateCount <= 0)
@@ -224,8 +318,9 @@ namespace AsyncScrollView
             // 7. 控制器和缓存池初始化
             ItemDataController.DespawnAllItem();
             GameObjectPool.Init(Data, itemDespawnType);
-            ItemDataController.Init(this, startIndex);
         }
+        
+        #endregion 初始化
 
         /// <summary>
         /// 释放所有
@@ -547,6 +642,8 @@ namespace AsyncScrollView
         /// <returns></returns>
         private float CalculateViewportOffset(float viewportPercent)
         {
+            if (Data.ItemCount <= 0) return 0f;
+
             var viewportSize = scrollRect.viewport.rect.size;
             switch (itemLayout)
             {
@@ -574,6 +671,8 @@ namespace AsyncScrollView
         /// <returns></returns>
         private float CalculateItemOffset(int index, float itemPercent)
         {
+            if (Data.ItemCount <= 0) return 0f;
+            
             switch (itemLayout)
             {
                 case EScrollViewItemLayout.Left2Right_Up2Down:

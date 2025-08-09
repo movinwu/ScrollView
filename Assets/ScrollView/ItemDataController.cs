@@ -21,11 +21,6 @@ namespace AsyncScrollView
         private readonly List<ScrollViewItemData> _freeItemData = new List<ScrollViewItemData>();
 
         /// <summary>
-        /// 可视窗口
-        /// </summary>
-        private Rect _visibleWindow;
-
-        /// <summary>
         /// 版本，用于异步操作时检查该异步操作是否过期
         /// </summary>
         private ulong _version;
@@ -49,6 +44,11 @@ namespace AsyncScrollView
         /// content缓存
         /// </summary>
         private RectTransform _contentCache;
+
+        /// <summary>
+        /// 虚拟窗口位置缓存
+        /// </summary>
+        private float _visibleWindowPositionCache;
 
         /// <summary>
         /// 放置所有data的默认父节点的根节点
@@ -115,7 +115,12 @@ namespace AsyncScrollView
         /// </summary>
         private Action<bool> _onAutoScrollingCompleted = null;
 
-        public void Init(ScrollView scrollView, int startIndex)
+        /// <summary>
+        /// item位置偏移
+        /// </summary>
+        private Vector2 _itemPositionOffset;
+
+        public void Init(ScrollView scrollView, int startIndex, float viewportOffset, float itemOffset, bool forceCenter)
         {
             _isInited = false;
             _scrollView = scrollView;
@@ -135,7 +140,7 @@ namespace AsyncScrollView
                 return;
             }
 
-            startIndex = startIndex % Data.ItemCount;
+            startIndex = Data.ItemCount <= 0 ? 0 : startIndex % Data.ItemCount;
             // 给定的负数索引，需要修正为正数索引
             if (startIndex < 0)
             {
@@ -251,231 +256,82 @@ namespace AsyncScrollView
             }
 
             // content大小和内容区域保持一致
-            _contentCache.sizeDelta = new Vector2(maxWidth, maxHeight);
+            var viewportSizeDelta = _scrollView.scrollRect.viewport.rect.size;
+            _contentCache.sizeDelta =
+                new Vector2(Mathf.Max(viewportSizeDelta.x, maxWidth), Mathf.Max(viewportSizeDelta.y, maxHeight));
             // item根节点坐标
             _itemDataRoot.anchoredPosition = Vector2.zero;
-            // 计算起点位置
-            var startPosition = Vector2.zero;
-            int startRowOrCol = startIndex / Data.ItemCountOneLine; // 起始行或列
-            switch (Data.ItemLayout)
+            _itemPositionOffset = Vector2.zero;
+            // 设置content位置
+            if (forceCenter)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                    // 可视范围不足一屏
-                    if (viewportSize.y >= maxHeight)
-                    {
-                        startIndex = 0;
-                    }
-                    else
-                    {
-                        startPosition.y = _itemYPositionCache[startRowOrCol] -
-                                          _itemHeightCache[startRowOrCol].upHeight;
-                        // 可视范围超框
-                        if (startPosition.y + viewportSize.y > maxHeight)
-                        {
-                            // 修正起点下标和坐标
-                            var currentY = startPosition.y;
-                            var limitY = maxHeight - viewportSize.y;
-                            // 起始下标每次都向下一行，直到当前下标退到限定位置以下
-                            while (currentY > limitY && startRowOrCol > 0)
-                            {
-                                startRowOrCol--;
-                                var heightCache = _itemHeightCache[startRowOrCol];
-                                currentY -= heightCache.upHeight;
-                                currentY -= heightCache.downHeight;
-                                startIndex -= Data.ItemCountOneLine;
-                            }
-
-                            startPosition.y = currentY;
-                        }
-                    }
-
-                    break;
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
-                    // 可视范围不足一屏
-                    if (viewportSize.y >= maxHeight)
-                    {
-                        startIndex = 0;
-                    }
-                    else
-                    {
-                        startPosition.y = _itemYPositionCache[startRowOrCol] -
-                                          _itemHeightCache[startRowOrCol].downHeight;
-                        // 可视范围超框
-                        if (startPosition.y + viewportSize.y > maxHeight)
-                        {
-                            // 修正起点下标和坐标
-                            var currentY = startPosition.y;
-                            var limitY = maxHeight - viewportSize.y;
-                            // 起始下标每次都向下一行，直到当前下标退到限定位置以下
-                            while (currentY > limitY && startRowOrCol > 0)
-                            {
-                                startRowOrCol--;
-                                var heightCache = _itemHeightCache[startRowOrCol];
-                                currentY -= heightCache.upHeight;
-                                currentY -= heightCache.downHeight;
-                                startIndex -= Data.ItemCountOneLine;
-                            }
-
-                            startPosition.y = currentY;
-                        }
-                    }
-
-                    break;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                    // 可视范围不足一屏
-                    if (viewportSize.x >= maxWidth)
-                    {
-                        startIndex = 0;
-                    }
-                    else
-                    {
-                        startPosition.x = _itemXPositionCache[startRowOrCol] -
-                                          _itemWidthCache[startRowOrCol].leftWidth;
-                        // 可视范围超框
-                        if (startPosition.x + viewportSize.x > maxWidth)
-                        {
-                            // 修正起点下标和坐标
-                            var currentX = startPosition.x;
-                            var limitX = maxWidth - viewportSize.x;
-                            // 起始下标每次都向下一行，直到当前下标退到限定位置以下
-                            while (currentX > limitX && startRowOrCol > 0)
-                            {
-                                startRowOrCol--;
-                                var widthCache = _itemWidthCache[startRowOrCol];
-                                currentX -= widthCache.leftWidth;
-                                currentX -= widthCache.rightWidth;
-                                startIndex -= Data.ItemCountOneLine;
-                            }
-
-                            startPosition.x = currentX;
-                        }
-                    }
-
-                    break;
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
-                    // 可视范围不足一屏
-                    if (viewportSize.x >= maxWidth)
-                    {
-                        startIndex = 0;
-                    }
-                    else
-                    {
-                        startPosition.x = _itemXPositionCache[startRowOrCol] -
-                                          _itemWidthCache[startRowOrCol].rightWidth;
-                        // 可视范围超框
-                        if (startPosition.x + viewportSize.x > maxWidth)
-                        {
-                            // 修正起点下标和坐标
-                            var currentX = startPosition.x;
-                            var limitX = maxWidth - viewportSize.x;
-                            // 起始下标每次都向下一行，直到当前下标退到限定位置以下
-                            while (currentX > limitX && startRowOrCol > 0)
-                            {
-                                startRowOrCol--;
-                                var widthCache = _itemWidthCache[startRowOrCol];
-                                currentX -= widthCache.leftWidth;
-                                currentX -= widthCache.rightWidth;
-                                startIndex -= Data.ItemCountOneLine;
-                            }
-
-                            startPosition.x = currentX;
-                        }
-                    }
-
-                    break;
+                var centerPosition = Vector2.zero;
+                centerPosition.x = (Mathf.Max(viewportSizeDelta.x, maxWidth) - viewportSizeDelta.x) / 2f;
+                centerPosition.y = (Mathf.Max(viewportSizeDelta.y, maxHeight) - viewportSizeDelta.y) / 2f;
+                switch (Data.ItemLayout)
+                {
+                    case EScrollViewItemLayout.Left2Right_Up2Down:
+                        _itemPositionOffset.x = Mathf.Max((viewportSizeDelta.x - maxWidth) / 2f, 0f);
+                        _itemPositionOffset.y = -Mathf.Max((viewportSizeDelta.y - maxHeight) / 2f, 0f);
+                        centerPosition.x = -centerPosition.x;
+                        _visibleWindowPositionCache = centerPosition.y;
+                        break;
+                    case EScrollViewItemLayout.Right2Left_Up2Down:
+                        _itemPositionOffset.x = -Mathf.Max((viewportSizeDelta.x - maxWidth) / 2f, 0f);
+                        _itemPositionOffset.y = -Mathf.Max((viewportSizeDelta.y - maxHeight) / 2f, 0f);
+                        _visibleWindowPositionCache = centerPosition.y;
+                        break;
+                    case EScrollViewItemLayout.Left2Right_Down2Up:
+                        _itemPositionOffset.x = Mathf.Max((viewportSizeDelta.x - maxWidth) / 2f, 0f);
+                        _itemPositionOffset.y = Mathf.Max((viewportSizeDelta.y - maxHeight) / 2f, 0f);
+                        centerPosition.x = -centerPosition.x;
+                        _visibleWindowPositionCache = centerPosition.y;
+                        centerPosition.y = -centerPosition.y;
+                        break;
+                    case EScrollViewItemLayout.Right2Left_Down2Up:
+                        _itemPositionOffset.x = -Mathf.Max((viewportSizeDelta.x - maxWidth) / 2f, 0f);
+                        _itemPositionOffset.y = Mathf.Max((viewportSizeDelta.y - maxHeight) / 2f, 0f);
+                        _visibleWindowPositionCache = centerPosition.y;
+                        centerPosition.y = -centerPosition.y;
+                        break;
+                    case EScrollViewItemLayout.Up2Down_Left2Right:
+                        _itemPositionOffset.x = Mathf.Max((viewportSizeDelta.x - maxWidth) / 2f, 0f);
+                        _itemPositionOffset.y = -Mathf.Max((viewportSizeDelta.y - maxHeight) / 2f, 0f);
+                        _visibleWindowPositionCache = centerPosition.x;
+                        centerPosition.x = -centerPosition.x;
+                        break;
+                    case EScrollViewItemLayout.Up2Down_Right2Left:
+                        _itemPositionOffset.x = -Mathf.Max((viewportSizeDelta.x - maxWidth) / 2f, 0f);
+                        _itemPositionOffset.y = -Mathf.Max((viewportSizeDelta.y - maxHeight) / 2f, 0f);
+                        _visibleWindowPositionCache = centerPosition.x;
+                        break;
+                    case EScrollViewItemLayout.Down2Up_Left2Right:
+                        _itemPositionOffset.x = Mathf.Max((viewportSizeDelta.x - maxWidth) / 2f, 0f);
+                        _itemPositionOffset.y = Mathf.Max((viewportSizeDelta.y - maxHeight) / 2f, 0f);
+                        centerPosition.y = -centerPosition.y;
+                        _visibleWindowPositionCache = centerPosition.x;
+                        centerPosition.x = -centerPosition.x;
+                        break;
+                    case EScrollViewItemLayout.Down2Up_Right2Left:
+                        _itemPositionOffset.x = -Mathf.Max((viewportSizeDelta.x - maxWidth) / 2f, 0f);
+                        _itemPositionOffset.y = Mathf.Max((viewportSizeDelta.y - maxHeight) / 2f, 0f);
+                        centerPosition.y = -centerPosition.y;
+                        _visibleWindowPositionCache = centerPosition.x;
+                        break;
+                }
+                _contentCache.anchoredPosition = centerPosition;
+            }
+            else
+            {
+                _visibleWindowPositionCache = CalculateItemJumpPosition(startIndex, viewportOffset, itemOffset);
+                SetContentPosition(_visibleWindowPositionCache);
             }
 
-            // 初始化可视窗口位置
-            _visibleWindow = new Rect(startPosition, viewportSize);
-            // content同步可视窗口位置
-            switch (Data.ItemLayout)
-            {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                    _contentCache.anchoredPosition = new Vector2(0f, startPosition.y);
-                    break;
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
-                    _contentCache.anchoredPosition = new Vector2(0f, -startPosition.y);
-                    break;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                    _contentCache.anchoredPosition = new Vector2(-startPosition.x, 0f);
-                    break;
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
-                    _contentCache.anchoredPosition = new Vector2(startPosition.x, 0f);
-                    break;
-            }
-
-            // 填充item数据
+            // 回收所有当前的item数据
             DespawnAllItem();
-            var currentPosition = _visibleWindow.position;
-            var limitPosition = _visibleWindow.position + _visibleWindow.size;
-            var index = startIndex;
-            switch (Data.ItemLayout)
-            {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
-                    while (currentPosition.y < limitPosition.y && index < Data.ItemCount)
-                    {
-                        // 初始化一行item数据
-                        for (var i = 0; i < Data.ItemCountOneLine; i++)
-                        {
-                            if (index >= Data.ItemCount)
-                            {
-                                break;
-                            }
-
-                            var itemData = SpawnItem(index);
-                            _itemData.AddLast(itemData);
-                            index++;
-                        }
-
-                        var heightCache = _itemHeightCache[index / Data.ItemCountOneLine];
-                        currentPosition.y += heightCache.upHeight;
-                        currentPosition.y += heightCache.downHeight;
-                    }
-
-                    break;
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                    while (currentPosition.x < limitPosition.x && index < Data.ItemCount)
-                    {
-                        // 初始化一行item数据
-                        for (var i = 0; i < Data.ItemCountOneLine; i++)
-                        {
-                            if (index >= Data.ItemCount)
-                            {
-                                break;
-                            }
-
-                            var itemData = SpawnItem(index);
-                            _itemData.AddLast(itemData);
-                            index++;
-                        }
-
-                        var widthCache = _itemWidthCache[index / Data.ItemCountOneLine];
-                        currentPosition.x += widthCache.leftWidth;
-                        currentPosition.x += widthCache.rightWidth;
-                    }
-
-                    break;
-            }
 
             // 初始化完毕
             _isInited = true;
-
-            // 刷新所有item数据(异步执行）
-            RefreshAllItemInstance().Forget(OnException);
         }
 
         /// <summary>
@@ -569,23 +425,8 @@ namespace AsyncScrollView
         {
             // 计算跳转位置
             var position = CalculateItemJumpPosition(index, viewportOffset, itemOffset);
-            // 当前滚动位置
-            switch (Data.ItemLayout)
-            {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
-                    _lastAutoScrollingPosition = _visibleWindow.position.y;
-                    break;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
-                    _lastAutoScrollingPosition = _visibleWindow.position.x;
-                    break;
-            }
-
+            
+            _lastAutoScrollingPosition = GetVisibleWindowPosition();
             _autoScrollingTargetPosition = position;
             _autoScrollingSpeed = speed;
             _onAutoScrollingCompleted = onCompleted;
@@ -613,23 +454,8 @@ namespace AsyncScrollView
             
             // 计算跳转位置
             var position = CalculateItemJumpPosition(index, viewportOffset, itemOffset);
-            // 当前滚动位置
-            switch (Data.ItemLayout)
-            {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
-                    _lastAutoScrollingPosition = _visibleWindow.position.y;
-                    break;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
-                    _lastAutoScrollingPosition = _visibleWindow.position.x;
-                    break;
-            }
-
+            
+            _lastAutoScrollingPosition = GetVisibleWindowPosition();
             _autoScrollingTargetPosition = position;
             _autoScrollingSpeed = Mathf.Abs(position - _lastAutoScrollingPosition) / time;
             _onAutoScrollingCompleted = onCompleted;
@@ -646,86 +472,145 @@ namespace AsyncScrollView
         /// <returns></returns>
         private float CalculateItemJumpPosition(int index, float viewportOffset, float itemOffset)
         {
+            if (Data.ItemCount <= 0) return 0f;
+            
             var position = 0f;
-            (float, float) heightOrWidth;
+            var size = GetVisibleWindowSize();
             // 获取item位置
+            position = GetVisibleItemPosition(index / Data.ItemCountOneLine);
+            var heightOrWidth = GetVisibleItemLength(index / Data.ItemCountOneLine);
+            position -= heightOrWidth.length1;
+            position += itemOffset;
+            position -= viewportOffset;
+            float sizeMax = 0f;
+            switch (Data.ItemLayout)
+            {
+                case EScrollViewItemLayout.Left2Right_Up2Down:
+                    case EScrollViewItemLayout.Right2Left_Up2Down:
+                    case EScrollViewItemLayout.Left2Right_Down2Up:
+                    case EScrollViewItemLayout.Right2Left_Down2Up:
+                    sizeMax = _maxSizeCache.height;
+                    break;
+                case EScrollViewItemLayout.Up2Down_Left2Right:
+                    case EScrollViewItemLayout.Down2Up_Left2Right:
+                    case EScrollViewItemLayout.Down2Up_Right2Left:
+                    case EScrollViewItemLayout.Up2Down_Right2Left:
+                    sizeMax = _maxSizeCache.width;
+                    break;
+            }
+            // 判断越界
+            if (position < 0f)
+            {
+                position = 0f;
+            }
+            else if (position > sizeMax - size)
+            {
+                position = sizeMax - size;
+            }
+
+            return position;
+        }
+
+        /// <summary>
+        /// 获取可视窗口大小
+        /// </summary>
+        /// <returns></returns>
+        private float GetVisibleWindowSize()
+        {
             switch (Data.ItemLayout)
             {
                 case EScrollViewItemLayout.Left2Right_Up2Down:
                 case EScrollViewItemLayout.Right2Left_Up2Down:
-                    position = _itemYPositionCache[index / Data.ItemCountOneLine];
-                    heightOrWidth = _itemHeightCache[index / Data.ItemCountOneLine];
-                    position -= heightOrWidth.Item1;
-                    position += itemOffset;
-                    position -= viewportOffset;
-                    // 判断越界
-                    if (position < 0f)
-                    {
-                        position = 0f;
-                    }
-                    else if (position > _maxSizeCache.height - _visibleWindow.size.y)
-                    {
-                        position = _maxSizeCache.height - _visibleWindow.size.y;
-                    }
-
-                    break;
                 case EScrollViewItemLayout.Left2Right_Down2Up:
                 case EScrollViewItemLayout.Right2Left_Down2Up:
-                    position = _itemYPositionCache[index / Data.ItemCountOneLine];
-                    heightOrWidth = _itemHeightCache[index / Data.ItemCountOneLine];
-                    position -= heightOrWidth.Item2;
-                    position += itemOffset;
-                    position -= viewportOffset;
-                    // 判断越界
-                    if (position < 0f)
-                    {
-                        position = 0f;
-                    }
-                    else if (position > _maxSizeCache.height - _visibleWindow.size.y)
-                    {
-                        position = _maxSizeCache.height - _visibleWindow.size.y;
-                    }
-
-                    break;
+                    return _scrollView.scrollRect.viewport.rect.size.y;
                 case EScrollViewItemLayout.Up2Down_Left2Right:
                 case EScrollViewItemLayout.Down2Up_Left2Right:
-                    position = _itemXPositionCache[index / Data.ItemCountOneLine];
-                    heightOrWidth = _itemWidthCache[index / Data.ItemCountOneLine];
-                    position -= heightOrWidth.Item1;
-                    position += itemOffset;
-                    position -= viewportOffset;
-                    // 判断越界
-                    if (position < 0f)
-                    {
-                        position = 0f;
-                    }
-                    else if (position > _maxSizeCache.width - _visibleWindow.size.x)
-                    {
-                        position = _maxSizeCache.width - _visibleWindow.size.x;
-                    }
-
-                    break;
                 case EScrollViewItemLayout.Up2Down_Right2Left:
                 case EScrollViewItemLayout.Down2Up_Right2Left:
-                    position = _itemXPositionCache[index / Data.ItemCountOneLine];
-                    heightOrWidth = _itemWidthCache[index / Data.ItemCountOneLine];
-                    position -= heightOrWidth.Item2;
-                    position += itemOffset;
-                    position -= viewportOffset;
-                    // 判断越界
-                    if (position < 0f)
-                    {
-                        position = 0f;
-                    }
-                    else if (position > _maxSizeCache.width - _visibleWindow.size.x)
-                    {
-                        position = _maxSizeCache.width - _visibleWindow.size.x;
-                    }
-
-                    break;
+                    return _scrollView.scrollRect.viewport.rect.size.x;
             }
+            return 0f;
+        }
 
-            return position;
+        /// <summary>
+        /// 获取可视窗口位置
+        /// </summary>
+        /// <returns></returns>
+        private float GetVisibleWindowPosition()
+        {
+            var visibleWindow = _contentCache.anchoredPosition;
+            // 当前滚动位置
+            switch (Data.ItemLayout)
+            {
+                case EScrollViewItemLayout.Left2Right_Up2Down:
+                case EScrollViewItemLayout.Right2Left_Up2Down:
+                    return visibleWindow.y;
+                case EScrollViewItemLayout.Left2Right_Down2Up:
+                case EScrollViewItemLayout.Right2Left_Down2Up:
+                    return -visibleWindow.y;
+                case EScrollViewItemLayout.Down2Up_Right2Left:
+                case EScrollViewItemLayout.Up2Down_Right2Left:
+                    return visibleWindow.x;
+                case EScrollViewItemLayout.Up2Down_Left2Right:
+                case EScrollViewItemLayout.Down2Up_Left2Right:
+                    return -visibleWindow.x;
+            }
+            return 0f;
+        }
+
+        /// <summary>
+        /// 获取虚拟item长度
+        /// </summary>
+        /// <param name="rowOrColIndex"></param>
+        /// <returns></returns>
+        private (float length1, float length2) GetVisibleItemLength(int rowOrColIndex)
+        {
+            if (Data.ItemCount <= 0) return (0f, 0f);
+
+            switch (Data.ItemLayout)
+            {
+                case EScrollViewItemLayout.Left2Right_Up2Down:
+                case EScrollViewItemLayout.Right2Left_Up2Down:
+                    return _itemHeightCache[rowOrColIndex];
+                case EScrollViewItemLayout.Left2Right_Down2Up:
+                case EScrollViewItemLayout.Right2Left_Down2Up:
+                    var height = _itemHeightCache[rowOrColIndex];
+                    return (height.downHeight, height.upHeight);
+                case EScrollViewItemLayout.Up2Down_Left2Right:
+                case EScrollViewItemLayout.Down2Up_Left2Right:
+                    return _itemWidthCache[rowOrColIndex];
+                case EScrollViewItemLayout.Up2Down_Right2Left:
+                case EScrollViewItemLayout.Down2Up_Right2Left:
+                    var width = _itemWidthCache[rowOrColIndex];
+                    return (width.rightWidth, width.leftWidth);
+            }
+            return (0f, 0f);
+        }
+
+        /// <summary>
+        /// 获取虚拟item位置
+        /// </summary>
+        /// <param name="rowOrColIndex"></param>
+        /// <returns></returns>
+        private float GetVisibleItemPosition(int rowOrColIndex)
+        {
+            if (Data.ItemCount <= 0) return 0f;
+
+            switch (Data.ItemLayout)
+            {
+                case EScrollViewItemLayout.Left2Right_Up2Down:
+                case EScrollViewItemLayout.Right2Left_Up2Down:
+                case EScrollViewItemLayout.Left2Right_Down2Up:
+                case EScrollViewItemLayout.Right2Left_Down2Up:
+                    return _itemYPositionCache[rowOrColIndex];
+                case EScrollViewItemLayout.Up2Down_Left2Right:
+                case EScrollViewItemLayout.Down2Up_Left2Right:
+                case EScrollViewItemLayout.Up2Down_Right2Left:
+                case EScrollViewItemLayout.Down2Up_Right2Left:
+                    return _itemXPositionCache[rowOrColIndex];
+            }
+            return 0f;
         }
 
         /// <summary>
@@ -763,6 +648,8 @@ namespace AsyncScrollView
         {
             // 申请新的版本号
             var version = ++_version;
+
+            if (_itemData.Count <= 0) return;
 
             // 更新分帧实例化数据缓存
             var curFrame = Time.frameCount;
@@ -889,7 +776,6 @@ namespace AsyncScrollView
                     position.y = _itemYPositionCache[rowCol.x % Data.Row];
                     position.y += (rowCol.x / Data.Row) * _maxSizeCache.height;
                     position.y = -position.y;
-                    itemData.ItemRoot.anchoredPosition = position;
                     break;
                 case EScrollViewItemLayout.Right2Left_Up2Down:
                     rowCol.x = dataIndex / Data.ItemCountOneLine;
@@ -899,7 +785,6 @@ namespace AsyncScrollView
                     position.y += (rowCol.x / Data.Row) * _maxSizeCache.height;
                     position.y = -position.y;
                     position.x = -position.x;
-                    itemData.ItemRoot.anchoredPosition = position;
                     break;
                 case EScrollViewItemLayout.Left2Right_Down2Up:
                     rowCol.x = dataIndex / Data.ItemCountOneLine;
@@ -907,7 +792,6 @@ namespace AsyncScrollView
                     position.x = _itemXPositionCache[rowCol.y];
                     position.y = _itemYPositionCache[rowCol.x % Data.Row];
                     position.y += (rowCol.x / Data.Row) * _maxSizeCache.height;
-                    itemData.ItemRoot.anchoredPosition = position;
                     break;
                 case EScrollViewItemLayout.Right2Left_Down2Up:
                     rowCol.x = dataIndex / Data.ItemCountOneLine;
@@ -916,7 +800,6 @@ namespace AsyncScrollView
                     position.y = _itemYPositionCache[rowCol.x % Data.Row];
                     position.y += (rowCol.x / Data.Row) * _maxSizeCache.height;
                     position.x = -position.x;
-                    itemData.ItemRoot.anchoredPosition = position;
                     break;
                 case EScrollViewItemLayout.Up2Down_Left2Right:
                     rowCol.x = dataIndex % Data.ItemCountOneLine;
@@ -925,7 +808,6 @@ namespace AsyncScrollView
                     position.y = _itemYPositionCache[rowCol.x];
                     position.x += (rowCol.x / Data.Col) * _maxSizeCache.width;
                     position.y = -position.y;
-                    itemData.ItemRoot.anchoredPosition = position;
                     break;
                 case EScrollViewItemLayout.Down2Up_Left2Right:
                     rowCol.x = dataIndex % Data.ItemCountOneLine;
@@ -933,7 +815,6 @@ namespace AsyncScrollView
                     position.x = _itemXPositionCache[rowCol.y % Data.Col];
                     position.y = _itemYPositionCache[rowCol.x];
                     position.x += (rowCol.x / Data.Col) * _maxSizeCache.width;
-                    itemData.ItemRoot.anchoredPosition = position;
                     break;
                 case EScrollViewItemLayout.Up2Down_Right2Left:
                     rowCol.x = dataIndex % Data.ItemCountOneLine;
@@ -943,7 +824,6 @@ namespace AsyncScrollView
                     position.x += (rowCol.x / Data.Col) * _maxSizeCache.width;
                     position.x = -position.x;
                     position.y = -position.y;
-                    itemData.ItemRoot.anchoredPosition = position;
                     break;
                 case EScrollViewItemLayout.Down2Up_Right2Left:
                     rowCol.x = dataIndex % Data.ItemCountOneLine;
@@ -952,9 +832,11 @@ namespace AsyncScrollView
                     position.y = _itemYPositionCache[rowCol.x];
                     position.x += (rowCol.x / Data.Col) * _maxSizeCache.width;
                     position.x = -position.x;
-                    itemData.ItemRoot.anchoredPosition = position;
                     break;
             }
+
+            position += _itemPositionOffset;
+            itemData.ItemRoot.anchoredPosition = position;
         }
 
         /// <summary>
@@ -963,10 +845,13 @@ namespace AsyncScrollView
         public void Tick()
         {
             if (!_isInited) return;
-
+            
+            // 检查数量为0时，不刷新
+            if (Data.ItemCount <= 0) return;
+            
             // 查看当前缓存窗口位置和实际位置的偏移
-            var currentPosition = _contentCache.anchoredPosition;
-            var windowPosition = _visibleWindow.position;
+            var lastVisibleWindowPosition = _visibleWindowPositionCache;
+            var currentVisibleWindowPosition = GetVisibleWindowPosition();
 
             // 回调调用
             bool isInvokeAutoScrollingCallback = false;
@@ -985,28 +870,7 @@ namespace AsyncScrollView
                 }
                 else
                 {
-                    var autoScrollPosition = 0f;
-                    switch (Data.ItemLayout)
-                    {
-                        case EScrollViewItemLayout.Left2Right_Up2Down:
-                        case EScrollViewItemLayout.Right2Left_Up2Down:
-                            autoScrollPosition = currentPosition.y;
-                            break;
-                        case EScrollViewItemLayout.Left2Right_Down2Up:
-                        case EScrollViewItemLayout.Right2Left_Down2Up:
-                            autoScrollPosition = -currentPosition.y;
-                            break;
-                        case EScrollViewItemLayout.Up2Down_Left2Right:
-                        case EScrollViewItemLayout.Down2Up_Left2Right:
-                            autoScrollPosition = -currentPosition.x;
-                            break;
-                        case EScrollViewItemLayout.Up2Down_Right2Left:
-                        case EScrollViewItemLayout.Down2Up_Right2Left:
-                            autoScrollPosition = currentPosition.x;
-                            break;
-                    }
-
-                    if (Mathf.Approximately(autoScrollPosition, _lastAutoScrollingPosition))
+                    if (Mathf.Approximately(currentVisibleWindowPosition, _lastAutoScrollingPosition))
                     {
                         // 计算下一个自动滚动的位置
                         var time = Time.deltaTime;
@@ -1035,28 +899,10 @@ namespace AsyncScrollView
                             }
                         }
 
-                        // 设置content位置
+                        // 更新当前content位置
                         SetContentPosition(_lastAutoScrollingPosition);
-                        // 更新content位置
-                        switch (Data.ItemLayout)
-                        {
-                            case EScrollViewItemLayout.Left2Right_Up2Down:
-                            case EScrollViewItemLayout.Right2Left_Up2Down:
-                                currentPosition.y = _lastAutoScrollingPosition;
-                                break;
-                            case EScrollViewItemLayout.Left2Right_Down2Up:
-                            case EScrollViewItemLayout.Right2Left_Down2Up:
-                                currentPosition.y = -_lastAutoScrollingPosition;
-                                break;
-                            case EScrollViewItemLayout.Up2Down_Left2Right:
-                            case EScrollViewItemLayout.Down2Up_Left2Right:
-                                currentPosition.x = -_lastAutoScrollingPosition;
-                                break;
-                            case EScrollViewItemLayout.Up2Down_Right2Left:
-                            case EScrollViewItemLayout.Down2Up_Right2Left:
-                                currentPosition.x = _lastAutoScrollingPosition;
-                                break;
-                        }
+                        _visibleWindowPositionCache = _lastAutoScrollingPosition;
+                        currentVisibleWindowPosition = _lastAutoScrollingPosition;
                     }
                     // 记录滚动位置和当前位置不同，则列表被拖动或以其他方式移动，直接结束滚动
                     else
@@ -1069,383 +915,126 @@ namespace AsyncScrollView
             }
 
             // 偏移计算
-            float offset = 0f;
-            switch (Data.ItemLayout)
+            float offset = currentVisibleWindowPosition - lastVisibleWindowPosition;
+            
+            bool changed = false;
+            bool empty = false;
+            // 如果item数据为空，则填入第一个item元素
+            if (_itemData.Count <= 0)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                    offset = currentPosition.y - windowPosition.y;
-                    break;
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
-                    currentPosition.y = -currentPosition.y;
-                    offset = currentPosition.y - windowPosition.y;
-                    break;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                    currentPosition.x = -currentPosition.x;
-                    offset = currentPosition.x - windowPosition.x;
-                    break;
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
-                    offset = currentPosition.x - windowPosition.x;
-                    break;
+                empty = true;
+                // 找到第一个item的下标
+                var lineCount = Data.ItemCount / Data.ItemCountOneLine;
+                for (int i = 0; i < lineCount; i++)
+                {
+                    var itemPosition = GetVisibleItemPosition(i);
+                    var visibleLength = GetVisibleItemLength(i);
+                    if (currentVisibleWindowPosition >= itemPosition - visibleLength.length1
+                        && currentVisibleWindowPosition <= itemPosition + visibleLength.length2)
+                    {
+                        // 填入第一个item
+                        var item = SpawnItem(i * Data.ItemCountOneLine);
+                        _itemData.AddFirst(item);
+                        changed = true;
+                        break;
+                    }
+                }
             }
 
             // 没有偏移量，不更新
-            if (!Mathf.Approximately(offset, 0f))
+            if (!Mathf.Approximately(offset, 0f) || empty)
             {
-                // 更新窗口位置
-                _visibleWindow.position = currentPosition;
-
                 // 缓存第一个和最后一个的下标和位置，然后更新到新的下标和位置，最后再比较确定哪些需要回收，哪些需要新增
                 var cachedStartIndex = _itemData.First.Value.DataIndex;
                 var cachedEndIndex = _itemData.Last.Value.DataIndex;
-                var startIndex = cachedStartIndex;
-                var endIndex = cachedEndIndex;
-                var startPosition = _itemData.First.Value.ItemRoot.anchoredPosition;
-                var endPosition = _itemData.Last.Value.ItemRoot.anchoredPosition;
-                startIndex = startIndex - startIndex % Data.ItemCountOneLine;
-                endIndex = endIndex - endIndex % Data.ItemCountOneLine;
-                float limitMin, limitMax, position;
-                switch (Data.ItemLayout)
+                // 计算后最终得到的心得开始和结束下标
+                var startIndex = cachedStartIndex - cachedStartIndex % Data.ItemCountOneLine;
+                var endIndex = cachedEndIndex - cachedEndIndex % Data.ItemCountOneLine;
+                float windowLimitMin = currentVisibleWindowPosition;
+                float windowLimitMax = currentVisibleWindowPosition + GetVisibleWindowSize();
+                // 计算开始坐标
+                var itemPosition = GetVisibleItemPosition(startIndex / Data.ItemCountOneLine);
+                var virtualLength = GetVisibleItemLength(startIndex / Data.ItemCountOneLine);
+                var itemMax = itemPosition + virtualLength.length2;
+                var itemMin = itemPosition - virtualLength.length1;
+                // 处在可视范围下方，向上移动
+                if (itemMax < windowLimitMin)
                 {
-                    case EScrollViewItemLayout.Left2Right_Down2Up:
-                    case EScrollViewItemLayout.Right2Left_Down2Up:
-                        // 计算起始坐标
-                        position = Mathf.Abs(startPosition.y);
-                        limitMax = position + _itemHeightCache[startIndex / Data.ItemCountOneLine].upHeight;
-                        limitMin = position - _itemHeightCache[startIndex / Data.ItemCountOneLine].downHeight;
-                        // 处在可视范围下方，向上移动
-                        if (limitMax < _visibleWindow.yMin)
+                    while (itemMax < windowLimitMin)
+                    {
+                        startIndex += Data.ItemCountOneLine;
+                        if (startIndex >= Data.ItemCount)
                         {
-                            while (limitMax < _visibleWindow.yMin)
-                            {
-                                startIndex += Data.ItemCountOneLine;
-                                if (startIndex >= Data.ItemCount)
-                                {
-                                    startIndex = Data.ItemCount - 1;
-                                    break;
-                                }
-
-                                var height = _itemHeightCache[startIndex / Data.ItemCountOneLine];
-                                limitMax += height.upHeight;
-                                limitMax += height.downHeight;
-                            }
-                        }
-                        // 处在可视范围上方，向下移动
-                        else if (limitMin > _visibleWindow.yMin)
-                        {
-                            while (limitMin > _visibleWindow.yMin)
-                            {
-                                startIndex -= Data.ItemCountOneLine;
-                                if (startIndex < 0)
-                                {
-                                    startIndex = 0;
-                                    break;
-                                }
-
-                                var height = _itemHeightCache[startIndex / Data.ItemCountOneLine];
-                                limitMin -= height.upHeight;
-                                limitMin -= height.downHeight;
-                            }
+                            startIndex = Data.ItemCount - 1;
+                            break;
                         }
 
-                        // 计算结束坐标
-                        position = Mathf.Abs(endPosition.y);
-                        limitMax = position + _itemHeightCache[endIndex / Data.ItemCountOneLine].upHeight;
-                        limitMin = position - _itemHeightCache[endIndex / Data.ItemCountOneLine].downHeight;
-                        // 处在可视范围下方，向上移动
-                        if (limitMax < _visibleWindow.yMax)
+                        virtualLength = GetVisibleItemLength(startIndex / Data.ItemCountOneLine);
+                        itemMax += virtualLength.length1;
+                        itemMax += virtualLength.length2;
+                    }
+                }
+                // 处在可视范围上方，向下移动
+                else if (itemMin >= windowLimitMin)
+                {
+                    while (itemMin >= windowLimitMin)
+                    {
+                        startIndex -= Data.ItemCountOneLine;
+                        if (startIndex < 0)
                         {
-                            while (limitMax < _visibleWindow.yMax)
-                            {
-                                endIndex += Data.ItemCountOneLine;
-                                if (endIndex >= Data.ItemCount)
-                                {
-                                    endIndex = Data.ItemCount - 1;
-                                    break;
-                                }
-
-                                var height = _itemHeightCache[endIndex / Data.ItemCountOneLine];
-                                limitMax += height.upHeight;
-                                limitMax += height.downHeight;
-                            }
-                        }
-                        // 处在可视范围上方，向下移动
-                        else if (limitMin > _visibleWindow.yMax)
-                        {
-                            while (limitMin > _visibleWindow.yMax)
-                            {
-                                endIndex -= Data.ItemCountOneLine;
-                                if (endIndex < 0)
-                                {
-                                    endIndex = 0;
-                                    break;
-                                }
-
-                                var height = _itemHeightCache[endIndex / Data.ItemCountOneLine];
-                                limitMin -= height.upHeight;
-                                limitMin -= height.downHeight;
-                            }
+                            startIndex = 0;
+                            break;
                         }
 
-                        // 结束坐标修正到该行/列最后一个
-                        endIndex = Mathf.Min(endIndex + Data.ItemCountOneLine - 1, Data.ItemCount - 1);
-                        break;
-                    case EScrollViewItemLayout.Left2Right_Up2Down:
-                    case EScrollViewItemLayout.Right2Left_Up2Down:
-                        // 计算起始坐标
-                        position = Mathf.Abs(startPosition.y);
-                        limitMax = position + _itemHeightCache[startIndex / Data.ItemCountOneLine].downHeight;
-                        limitMin = position - _itemHeightCache[startIndex / Data.ItemCountOneLine].upHeight;
-                        // 处在可视范围下方，向上移动
-                        if (limitMax < _visibleWindow.yMin)
-                        {
-                            while (limitMax < _visibleWindow.yMin)
-                            {
-                                startIndex += Data.ItemCountOneLine;
-                                if (startIndex >= Data.ItemCount)
-                                {
-                                    startIndex = Data.ItemCount - 1;
-                                    break;
-                                }
-
-                                var height = _itemHeightCache[startIndex / Data.ItemCountOneLine];
-                                limitMax += height.downHeight;
-                                limitMax += height.upHeight;
-                            }
-                        }
-                        // 处在可视范围上方，向下移动
-                        else if (limitMin > _visibleWindow.yMin)
-                        {
-                            while (limitMin > _visibleWindow.yMin)
-                            {
-                                startIndex -= Data.ItemCountOneLine;
-                                if (startIndex < 0)
-                                {
-                                    startIndex = 0;
-                                    break;
-                                }
-
-                                var height = _itemHeightCache[startIndex / Data.ItemCountOneLine];
-                                limitMin -= height.downHeight;
-                                limitMin -= height.upHeight;
-                            }
-                        }
-
-                        // 计算结束坐标
-                        position = Mathf.Abs(endPosition.y);
-                        limitMax = position + _itemHeightCache[endIndex / Data.ItemCountOneLine].downHeight;
-                        limitMin = position - _itemHeightCache[endIndex / Data.ItemCountOneLine].upHeight;
-                        // 处在可视范围下方，向上移动
-                        if (limitMax < _visibleWindow.yMax)
-                        {
-                            while (limitMax < _visibleWindow.yMax)
-                            {
-                                endIndex += Data.ItemCountOneLine;
-                                if (endIndex >= Data.ItemCount)
-                                {
-                                    endIndex = Data.ItemCount - 1;
-                                    break;
-                                }
-
-                                var height = _itemHeightCache[endIndex / Data.ItemCountOneLine];
-                                limitMax += height.downHeight;
-                                limitMax += height.upHeight;
-                            }
-                        }
-                        // 处在可视范围上方，向下移动
-                        else if (limitMin > _visibleWindow.yMax)
-                        {
-                            while (limitMin > _visibleWindow.yMax)
-                            {
-                                endIndex -= Data.ItemCountOneLine;
-                                if (endIndex < 0)
-                                {
-                                    endIndex = 0;
-                                    break;
-                                }
-
-                                var height = _itemHeightCache[endIndex / Data.ItemCountOneLine];
-                                limitMin -= height.downHeight;
-                                limitMin -= height.upHeight;
-                            }
-                        }
-
-                        // 结束坐标修正到该行/列最后一个
-                        endIndex = Mathf.Min(endIndex + Data.ItemCountOneLine - 1, Data.ItemCount - 1);
-                        break;
-                    case EScrollViewItemLayout.Up2Down_Left2Right:
-                    case EScrollViewItemLayout.Down2Up_Left2Right:
-                        // 计算起始坐标
-                        position = Mathf.Abs(startPosition.x);
-                        limitMax = position + _itemWidthCache[startIndex / Data.ItemCountOneLine].rightWidth;
-                        limitMin = position - _itemWidthCache[startIndex / Data.ItemCountOneLine].leftWidth;
-                        // 处在可视范围左侧，向右移动
-                        if (limitMax < _visibleWindow.xMin)
-                        {
-                            while (limitMax < _visibleWindow.xMin)
-                            {
-                                startIndex += Data.ItemCountOneLine;
-                                if (startIndex >= Data.ItemCount)
-                                {
-                                    startIndex = Data.ItemCount - 1;
-                                    break;
-                                }
-
-                                var width = _itemWidthCache[startIndex / Data.ItemCountOneLine];
-                                limitMax += width.rightWidth;
-                                limitMax += width.leftWidth;
-                            }
-                        }
-                        // 处在可视范围右侧，向左移动
-                        else if (limitMin > _visibleWindow.xMin)
-                        {
-                            while (limitMin > _visibleWindow.xMin)
-                            {
-                                startIndex -= Data.ItemCountOneLine;
-                                if (startIndex < 0)
-                                {
-                                    startIndex = 0;
-                                    break;
-                                }
-
-                                var width = _itemWidthCache[startIndex / Data.ItemCountOneLine];
-                                limitMin -= width.rightWidth;
-                                limitMin -= width.leftWidth;
-                            }
-                        }
-
-                        // 计算结束坐标
-                        position = Mathf.Abs(endPosition.x);
-                        limitMax = position + _itemWidthCache[endIndex / Data.ItemCountOneLine].rightWidth;
-                        limitMin = position - _itemWidthCache[endIndex / Data.ItemCountOneLine].leftWidth;
-                        // 处在可视范围左侧，向右移动
-                        if (limitMax < _visibleWindow.xMax)
-                        {
-                            while (limitMax < _visibleWindow.xMax)
-                            {
-                                endIndex += Data.ItemCountOneLine;
-                                if (endIndex >= Data.ItemCount)
-                                {
-                                    endIndex = Data.ItemCount - 1;
-                                    break;
-                                }
-
-                                var width = _itemWidthCache[endIndex / Data.ItemCountOneLine];
-                                limitMax += width.rightWidth;
-                                limitMax += width.leftWidth;
-                            }
-                        }
-                        // 处在可视范围右侧，向左移动
-                        else if (limitMin > _visibleWindow.xMax)
-                        {
-                            while (limitMin > _visibleWindow.xMax)
-                            {
-                                endIndex -= Data.ItemCountOneLine;
-                                if (endIndex < 0)
-                                {
-                                    endIndex = 0;
-                                    break;
-                                }
-
-                                var width = _itemWidthCache[endIndex / Data.ItemCountOneLine];
-                                limitMin -= width.rightWidth;
-                                limitMin -= width.leftWidth;
-                            }
-                        }
-
-                        // 结束坐标修正到该行/列最后一个
-                        endIndex = Mathf.Min(endIndex + Data.ItemCountOneLine - 1, Data.ItemCount - 1);
-                        break;
-                    case EScrollViewItemLayout.Up2Down_Right2Left:
-                    case EScrollViewItemLayout.Down2Up_Right2Left:
-                        // 计算起始坐标
-                        position = Mathf.Abs(startPosition.x);
-                        limitMax = position + _itemWidthCache[startIndex / Data.ItemCountOneLine].leftWidth;
-                        limitMin = position - _itemWidthCache[startIndex / Data.ItemCountOneLine].rightWidth;
-                        // 处在可视范围左侧，向右移动
-                        if (limitMax < _visibleWindow.xMin)
-                        {
-                            while (limitMax < _visibleWindow.xMin)
-                            {
-                                startIndex += Data.ItemCountOneLine;
-                                if (startIndex >= Data.ItemCount)
-                                {
-                                    startIndex = Data.ItemCount - 1;
-                                    break;
-                                }
-
-                                var width = _itemWidthCache[startIndex / Data.ItemCountOneLine];
-                                limitMax += width.rightWidth;
-                                limitMax += width.leftWidth;
-                            }
-                        }
-                        // 处在可视范围右侧，向左移动
-                        else if (limitMin > _visibleWindow.xMin)
-                        {
-                            while (limitMin > _visibleWindow.xMin)
-                            {
-                                startIndex -= Data.ItemCountOneLine;
-                                if (startIndex < 0)
-                                {
-                                    startIndex = 0;
-                                    break;
-                                }
-
-                                var width = _itemWidthCache[startIndex / Data.ItemCountOneLine];
-                                limitMin -= width.rightWidth;
-                                limitMin -= width.leftWidth;
-                            }
-                        }
-
-                        // 计算结束坐标
-                        position = Mathf.Abs(endPosition.x);
-                        limitMax = position + _itemWidthCache[endIndex / Data.ItemCountOneLine].leftWidth;
-                        limitMin = position - _itemWidthCache[endIndex / Data.ItemCountOneLine].rightWidth;
-                        // 处在可视范围左侧，向右移动
-                        if (limitMax < _visibleWindow.xMax)
-                        {
-                            while (limitMax < _visibleWindow.xMax)
-                            {
-                                endIndex += Data.ItemCountOneLine;
-                                if (endIndex >= Data.ItemCount)
-                                {
-                                    endIndex = Data.ItemCount - 1;
-                                    break;
-                                }
-
-                                var width = _itemWidthCache[endIndex / Data.ItemCountOneLine];
-                                limitMax += width.rightWidth;
-                                limitMax += width.leftWidth;
-                            }
-                        }
-                        // 处在可视范围右侧，向左移动
-                        else if (limitMin > _visibleWindow.xMax)
-                        {
-                            while (limitMin > _visibleWindow.xMax)
-                            {
-                                endIndex -= Data.ItemCountOneLine;
-                                if (endIndex < 0)
-                                {
-                                    endIndex = 0;
-                                    break;
-                                }
-
-                                var width = _itemWidthCache[endIndex / Data.ItemCountOneLine];
-                                limitMin -= width.rightWidth;
-                                limitMin -= width.leftWidth;
-                            }
-                        }
-
-                        // 结束坐标修正到该行/列最后一个
-                        endIndex = Mathf.Min(endIndex + Data.ItemCountOneLine - 1, Data.ItemCount - 1);
-                        break;
+                        virtualLength = GetVisibleItemLength(startIndex / Data.ItemCountOneLine);
+                        itemMin -= virtualLength.length1;
+                        itemMin -= virtualLength.length2;
+                    }
                 }
 
-                ScrollViewItemData itemData = null;
-                bool changed = false;
+                // 计算结束坐标
+                itemPosition = GetVisibleItemPosition(endIndex / Data.ItemCountOneLine);
+                virtualLength = GetVisibleItemLength(endIndex / Data.ItemCountOneLine);
+                itemMax = itemPosition + virtualLength.length2;
+                itemMin = itemPosition - virtualLength.length1;
+                // 处在可视范围下方，向上移动
+                if (itemMax <= windowLimitMax)
+                {
+                    while (itemMax <= windowLimitMax)
+                    {
+                        endIndex += Data.ItemCountOneLine;
+                        if (endIndex >= Data.ItemCount)
+                        {
+                            endIndex = Data.ItemCount - 1;
+                            break;
+                        }
+
+                        virtualLength = GetVisibleItemLength(endIndex / Data.ItemCountOneLine);
+                        itemMax += virtualLength.length1;
+                        itemMax += virtualLength.length2;
+                    }
+                }
+                // 处在可视范围上方，向下移动
+                else if (itemMin > windowLimitMax)
+                {
+                    while (itemMin > windowLimitMax)
+                    {
+                        endIndex -= Data.ItemCountOneLine;
+                        if (endIndex < 0)
+                        {
+                            endIndex = 0;
+                            break;
+                        }
+
+                        virtualLength = GetVisibleItemLength(endIndex / Data.ItemCountOneLine);
+                        itemMin -= virtualLength.length1;
+                        itemMin -= virtualLength.length2;
+                    }
+                }
+
+                // 结束坐标修正到该行/列最后一个
+                endIndex = Mathf.Min(endIndex + Data.ItemCountOneLine - 1, Data.ItemCount - 1);
+
                 // 比较开始下标和结束下标，先走回收，再走新增，否则缓存池中数量会一直增加
                 while (startIndex > cachedStartIndex)
                 {
@@ -1486,12 +1075,12 @@ namespace AsyncScrollView
                     _itemData.AddLast(item);
                     changed = true;
                 }
+            }
 
-                // 发生变化，做一次刷新
-                if (changed)
-                {
-                    RefreshAllItemInstance().Forget(OnException);
-                }
+            // 发生变化，做一次刷新
+            if (changed)
+            {
+                RefreshAllItemInstance().Forget(OnException);
             }
             
             // 自动滚动回调调用
