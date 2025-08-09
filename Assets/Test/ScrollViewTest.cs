@@ -7,11 +7,13 @@ using UnityEngine;
 public class ScrollViewTest : MonoBehaviour
 {
     [SerializeField] private ScrollView scrollView;
+
+    private int itemCount = 200;
     
     void Start()
     {
         // scrollView.InitOffsetOffset(500, OnItemBindData, GetItemWidth, GetItemHeight, 5, getItemPrefabIndex: GetItemPrefabIndex);
-        scrollView.InitCenter(200, OnItemBindData, _ => (80, 80), _ => (80, 80));
+        scrollView.InitCenter(itemCount, OnItemBindData, _ => (80, 80), _ => (80, 80));
         // StartCoroutine(Cor());
     }
 
@@ -70,5 +72,10 @@ public class ScrollViewTest : MonoBehaviour
     private void OnItemBindData((int dataIndex, GameObject itemInstance) obj)
     {
         obj.itemInstance.transform.Find("ContentTxt").GetComponent<TMP_Text>().text = obj.dataIndex.ToString();
+        if (obj.dataIndex == itemCount - 1)
+        {
+            itemCount += 200;
+            scrollView.Expand(itemCount);
+        }
     }
 }

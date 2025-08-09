@@ -347,6 +347,34 @@ namespace AsyncScrollView
         {
             ItemDataController?.RefreshAll();
         }
+
+        /// <summary>
+        /// 扩张（增加或减少数据数量，item位置和content位置不会变化）
+        /// </summary>
+        /// <param name="newItemCount"></param>
+        public void Expand(int newItemCount)
+        {
+            if (newItemCount <= 0)
+            {
+                Release();
+                return;
+            }
+            if (null != Data)
+            {
+                Data.ItemCount = newItemCount;
+                if (scrollRect.vertical)
+                {
+                    Data.Col = Data.ItemCountOneLine;
+                    Data.Row = Data.ItemCount / Data.ItemCountOneLine + (Data.ItemCount % Data.ItemCountOneLine > 0 ? 1 : 0);
+                }
+                else
+                {
+                    Data.Row = Data.ItemCountOneLine;
+                    Data.Col = Data.ItemCount / Data.ItemCountOneLine + (Data.ItemCount % Data.ItemCountOneLine > 0 ? 1 : 0);
+                }
+            }
+            ItemDataController?.Expand(newItemCount);
+        }
         
         #region 跳转
 
