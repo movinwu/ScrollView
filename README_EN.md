@@ -1,5 +1,7 @@
 # Unity ScrollView Wrapper Component
 
+[中文版本](README.md)
+
 A high-performance, customizable Unity ScrollView wrapper component that supports infinite scrolling, multiple layout modes, and dynamic sizing.
 
 ## Features
@@ -13,6 +15,9 @@ A high-performance, customizable Unity ScrollView wrapper component that support
 - ✅ Built-in object pool management with various recycling strategies
 - ✅ Single script supports both simple lists and multi-row/column lists
 - ✅ No need to inherit base class for list items, more flexible usage
+- ✅ Multiple initialization methods (center/percent/offset)
+- ✅ Supports initializing list items to the center of scroll view
+- ✅ Expansion feature for dynamically growing lists (e.g. leaderboards)
 
 ## Comparison with SuperScrollView
 
@@ -54,9 +59,9 @@ public class MyScrollView : MonoBehaviour
     void Start()
     {
         // Initialize ScrollView
-        scrollView.Init(
+        scrollView.InitCenter(
             itemCount: 100, 
-            onBindData: OnItemBindData,
+            onItemBindData: OnItemBindData,
             getItemWidth: GetItemWidth,
             getItemHeight: GetItemHeight,
             startIndex: 0
@@ -83,13 +88,44 @@ public class MyScrollView : MonoBehaviour
 }
 ```
 
+### New Features Usage Examples
+
+```csharp
+// Initialize and center the 50th item
+scrollView.InitCenter(
+    itemCount: 100,
+    onItemBindData: OnItemBindData,
+    getItemWidth: GetItemWidth,
+    getItemHeight: GetItemHeight,
+    startIndex: 50 // Center the 50th item
+);
+
+// Initialize with percentage + offset positioning
+scrollView.InitPercentOffset(
+    itemCount: 100,
+    onItemBindData: OnItemBindData,
+    getItemWidth: GetItemWidth,
+    getItemHeight: GetItemHeight,
+    viewportPercent: 0.5f, // 50% position in viewport
+    itemOffset: 10f // Additional 10 unit offset for item
+);
+
+// Expand list dynamically (e.g. for leaderboards)
+void AddMoreItems()
+{
+    scrollView.Expand(10, () => {
+        Debug.Log("List expanded by 10 items");
+    });
+}
+```
+
 ## API Documentation
 
 ### Core Methods
 
-#### `Init`
+#### `InitCenter`
 ```csharp
-void Init(
+void InitCenter(
     int itemCount, 
     Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
     Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
@@ -99,7 +135,61 @@ void Init(
     Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
 )
 ```
-Initializes the ScrollView with basic parameters and callbacks.
+Initialize ScrollView and center the specified index item.
+
+#### `InitPercentOffset`
+```csharp
+void InitPercentOffset(
+    int itemCount, 
+    Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
+    Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
+    Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
+    float viewportPercent = 0f,
+    float itemOffset = 0f,
+    int startIndex = 0,
+    Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+    Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
+)
+```
+Initialize ScrollView with percentage + offset positioning.
+
+#### `InitOffsetPercent`
+```csharp
+void InitOffsetPercent(
+    int itemCount, 
+    Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
+    Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
+    Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
+    float viewportOffset = 0f,
+    float itemPercent = 0f,
+    int startIndex = 0,
+    Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+    Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
+)
+```
+Initialize ScrollView with offset + percentage positioning.
+
+#### `InitOffsetOffset`
+```csharp
+void InitOffsetOffset(
+    int itemCount, 
+    Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
+    Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
+    Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
+    float viewportOffset = 0f,
+    float itemOffset = 0f,
+    int startIndex = 0,
+    Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+    Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
+)
+```
+Initialize ScrollView with offset + offset positioning.
+
+#### `Expand`
+```csharp
+void Expand(int expandCount, Action onExpandCompleted = null)
+```
+Expand the list item count for dynamically growing lists (e.g. leaderboards).
 
 #### `JumpToIndex`
 ```csharp
@@ -108,7 +198,7 @@ void JumpToIndexByPercentOffset(int index, float viewportPercent = 0f, float ite
 void JumpToIndexByOffsetPercent(int index, float viewportOffset = 0f, float itemPercent = 0f)
 void JumpToIndexByOffsetOffset(int index, float viewportOffset = 0f, float itemOffset = 0f)
 ```
-Jumps immediately to the specified index position.
+Jump immediately to the specified index position.
 
 #### `MoveToIndex`
 ```csharp
@@ -129,16 +219,16 @@ void MoveToIndexByTimeOffsetPercent(int index, float time, Action<bool> onMoveCo
 void MoveToIndexByTimeOffsetOffset(int index, float time, Action<bool> onMoveCompleted = null,
             float viewportOffset = 0f, float itemOffset = 0f)
 ```
-Smoothly moves to the specified index position.
+Smoothly move to the specified index position.
 
 ### Callback Explanation
 
-- `onItemBindData`: Called when data needs to be bound to an item
-- `onItemUnbindData`: Called when data needs to be unbound from an item
+- `onItemBindData`: Called when data needs to be bound to an item (when item is taken from pool and displayed)
+- `onItemUnbindData`: Called when data needs to be unbound from an item (when item is returned to pool)
 - `getItemWidth`: Dynamically gets item width
 - `getItemHeight`: Dynamically gets item height
 - `getItemPrefabIndex`: Selects prefab index for multiple prefab templates
-- `onMoveCompleted`: Called when the movement is completed, with a parameter indicating whether the movement was successful
+- `onMoveCompleted`: Called when smooth movement completes, with parameter indicating whether movement was successful
 
 ## Example Scene
 

@@ -15,6 +15,9 @@
 - ✅ 内置对象池管理，支持多种缓存池回收方式
 - ✅ 一个脚本支持简单列表和多行（列）列表，使用更简单
 - ✅ 使用列表元素无需继承基类，使用方法更为简单灵活
+- ✅ 多种初始化方式（居中/百分比/偏移）
+- ✅ 支持初始化列表项到滑动列表中央
+- ✅ 扩张功能（用于动态增长的列表，如排行榜）
 
 ## 对比SuperScrollView
 
@@ -56,7 +59,7 @@ public class MyScrollView : MonoBehaviour
     void Start()
     {
         // 初始化ScrollView
-        scrollView.Init(
+        scrollView.InitCenter(
             itemCount: 100, 
             onItemBindData: OnItemBindData,
             getItemWidth: GetItemWidth,
@@ -85,13 +88,44 @@ public class MyScrollView : MonoBehaviour
 }
 ```
 
+### 新功能使用示例
+
+```csharp
+// 初始化并将第50个item居中显示
+scrollView.InitCenter(
+    itemCount: 100,
+    onItemBindData: OnItemBindData,
+    getItemWidth: GetItemWidth,
+    getItemHeight: GetItemHeight,
+    startIndex: 50 // 将第50个item居中显示
+);
+
+// 使用百分比+偏移量方式初始化
+scrollView.InitPercentOffset(
+    itemCount: 100,
+    onItemBindData: OnItemBindData,
+    getItemWidth: GetItemWidth,
+    getItemHeight: GetItemHeight,
+    viewportPercent: 0.5f, // 视口50%位置
+    itemOffset: 10f // item额外偏移10单位
+);
+
+// 动态扩展列表（如排行榜）
+void AddMoreItems()
+{
+    scrollView.Expand(10, () => {
+        Debug.Log("列表已扩展10个item");
+    });
+}
+```
+
 ## API文档
 
 ### 核心方法
 
-#### `Init`
+#### `InitCenter`
 ```csharp
-void Init(
+void InitCenter(
     int itemCount, 
     Action<(int dataIndex, GameObject itemInstance)> onBindData,
     Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
@@ -101,7 +135,61 @@ void Init(
     Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
 )
 ```
-初始化ScrollView，设置基本参数和回调。
+初始化ScrollView并将指定索引的item居中显示。
+
+#### `InitPercentOffset`
+```csharp
+void InitPercentOffset(
+    int itemCount, 
+    Action<(int dataIndex, GameObject itemInstance)> onBindData,
+    Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
+    Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
+    float viewportPercent = 0f,
+    float itemOffset = 0f,
+    int startIndex = 0,
+    Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+    Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
+)
+```
+初始化ScrollView并使用百分比+偏移量方式定位初始item。
+
+#### `InitOffsetPercent`
+```csharp
+void InitOffsetPercent(
+    int itemCount, 
+    Action<(int dataIndex, GameObject itemInstance)> onBindData,
+    Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
+    Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
+    float viewportOffset = 0f,
+    float itemPercent = 0f,
+    int startIndex = 0,
+    Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+    Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
+)
+```
+初始化ScrollView并使用偏移量+百分比方式定位初始item。
+
+#### `InitOffsetOffset`
+```csharp
+void InitOffsetOffset(
+    int itemCount, 
+    Action<(int dataIndex, GameObject itemInstance)> onBindData,
+    Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemWidth,
+    Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemHeight,
+    float viewportOffset = 0f,
+    float itemOffset = 0f,
+    int startIndex = 0,
+    Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
+    Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null
+)
+```
+初始化ScrollView并使用偏移量+偏移量方式定位初始item。
+
+#### `Expand`
+```csharp
+void Expand(int expandCount, Action onExpandCompleted = null)
+```
+扩展列表项数量，用于动态增长的列表（如排行榜）。
 
 #### `JumpToIndex`
 ```csharp
