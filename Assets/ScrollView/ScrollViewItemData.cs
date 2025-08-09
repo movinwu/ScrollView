@@ -18,9 +18,14 @@ namespace AsyncScrollView
         public int InstanceDataIndex;
 
         /// <summary>
-        /// 实例根节点
+        /// 实例位置
         /// </summary>
-        public readonly RectTransform ItemRoot;
+        public Vector2 ItemPosition;
+
+        /// <summary>
+        /// item容器（所有item都初始在itemContainer下）
+        /// </summary>
+        public readonly RectTransform ItemContainer;
         
         /// <summary>
         /// 列表数据控制器
@@ -50,7 +55,7 @@ namespace AsyncScrollView
         public ScrollViewItemData(ItemDataController dataController, RectTransform itemRoot)
         {
             _dataController = dataController;
-            ItemRoot = itemRoot;
+            ItemContainer = itemRoot;
         }
 
         /// <summary>

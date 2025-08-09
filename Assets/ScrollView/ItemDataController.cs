@@ -751,24 +751,15 @@ namespace AsyncScrollView
             {
                 var item = _freeItemData[^1];
                 _freeItemData.RemoveAt(_freeItemData.Count - 1);
-                item.ItemRoot.gameObject.name = $"Item_{dataIndex}";
                 item.DataIndex = dataIndex;
                 SyncItemDataPosition(item);
                 return item;
             }
-
-            var gameObject = new GameObject("free");
-            gameObject.transform.SetParent(_itemDataRoot);
-            var rectTrans = gameObject.GetComponent<RectTransform>();
-            if (null == rectTrans)
+            
+            var newItem = new ScrollViewItemData(this, _itemDataRoot)
             {
-                rectTrans = gameObject.AddComponent<RectTransform>();
-            }
-
-            rectTrans.sizeDelta = Vector2.zero;
-            var newItem = new ScrollViewItemData(this, rectTrans);
-            newItem.ItemRoot.gameObject.name = $"Item_{dataIndex}";
-            newItem.DataIndex = dataIndex;
+                DataIndex = dataIndex
+            };
             SyncItemDataPosition(newItem);
             return newItem;
         }
@@ -781,7 +772,6 @@ namespace AsyncScrollView
             if (_itemData.Count <= 0) return;
             var item = _itemData.First;
             _freeItemData.Add(item.Value);
-            item.Value.ItemRoot.name = "free";
             _itemData.RemoveFirst();
         }
 
@@ -790,7 +780,6 @@ namespace AsyncScrollView
             if (_itemData.Count <= 0) return;
             var item = _itemData.Last;
             _freeItemData.Add(item.Value);
-            item.Value.ItemRoot.name = "free";
             _itemData.RemoveLast();
         }
 
@@ -804,7 +793,6 @@ namespace AsyncScrollView
                 item.DataIndex = -1;
                 item.DespawnInstance();
                 _freeItemData.Add(item);
-                item.ItemRoot.name = "free";
             }
 
             _itemData.Clear();
@@ -897,7 +885,7 @@ namespace AsyncScrollView
             }
 
             position += _itemPositionOffset;
-            itemData.ItemRoot.anchoredPosition = position;
+            itemData.ItemPosition = position;
         }
 
         /// <summary>

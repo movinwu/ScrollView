@@ -131,7 +131,6 @@ namespace AsyncScrollView
             {
                 itemData.ItemInstance = list[^1];
                 list.RemoveAt(list.Count - 1);
-                itemData.ItemInstance.transform.SetParent(itemData.ItemRoot);
                 itemData.ItemInstance.transform.localPosition = Vector3.zero;
                 itemData.ItemInstance.transform.localRotation = Quaternion.identity;
             
@@ -145,13 +144,15 @@ namespace AsyncScrollView
             }
             else
             {
-                var instantiateItem = Object.Instantiate(_itemPrefabs[itemIndex], itemData.ItemRoot);
+                var instantiateItem = Object.Instantiate(_itemPrefabs[itemIndex], itemData.ItemContainer);
                 instantiateItem.transform.localPosition = Vector3.zero;
                 instantiateItem.transform.localRotation = Quaternion.identity;
                 itemData.ItemInstance = instantiateItem;
                 isNew = true;
             }
             itemData.InstanceDataIndex = itemData.DataIndex;
+            itemData.ItemInstance.gameObject.name = itemData.DataIndex.ToString();
+            itemData.ItemInstance.GetComponent<RectTransform>().anchoredPosition = itemData.ItemPosition;
             
             // 正在使用中的预制体记录
             _usingGameObjects.Add(itemData.ItemInstance, itemIndex);
@@ -181,6 +182,7 @@ namespace AsyncScrollView
                 _freeGameObjects[itemIndex] = list;
             }
             list.Add(data.ItemInstance);
+            data.ItemInstance.gameObject.name = "Free";
             _data.OnItemUnbindData?.Invoke((data.InstanceDataIndex, data.ItemInstance));
             // 当回收时，根据回收类型对预制体进行相应操作
             switch (_itemDespawnType)
