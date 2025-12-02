@@ -535,14 +535,6 @@ namespace AsyncScrollView
         {
             if (Data.ItemCount <= 0) return 0f;
             
-            var position = 0f;
-            var size = GetVisibleWindowSize();
-            // 获取item位置
-            position = GetVisibleItemPosition(index / Data.ItemCountOneLine);
-            var heightOrWidth = GetVisibleItemLength(index / Data.ItemCountOneLine);
-            position -= heightOrWidth.length1;
-            position += itemOffset;
-            position -= viewportOffset;
             float sizeMax = 0f;
             switch (Data.ItemLayout)
             {
@@ -559,6 +551,19 @@ namespace AsyncScrollView
                     sizeMax = _maxSizeCache.width;
                     break;
             }
+            var position = 0f;
+            var size = GetVisibleWindowSize();
+            // 不足一屏的，不会产生跳转
+            if (size >= sizeMax)
+            {
+                return position;
+            }
+            // 获取item位置
+            position = GetVisibleItemPosition(index / Data.ItemCountOneLine);
+            var heightOrWidth = GetVisibleItemLength(index / Data.ItemCountOneLine);
+            position -= heightOrWidth.length1;
+            position += itemOffset;
+            position -= viewportOffset;
             // 判断越界
             if (position < 0f)
             {
@@ -973,7 +978,7 @@ namespace AsyncScrollView
             {
                 empty = true;
                 // 找到第一个item的下标
-                var lineCount = Data.ItemCount / Data.ItemCountOneLine;
+                var lineCount = Mathf.CeilToInt(Data.ItemCount * 1.0f / Data.ItemCountOneLine);
                 for (int i = 0; i < lineCount; i++)
                 {
                     var itemPosition = GetVisibleItemPosition(i);

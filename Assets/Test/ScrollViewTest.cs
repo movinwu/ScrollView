@@ -12,7 +12,7 @@ public class ScrollViewTest : MonoBehaviour
     
     void Start()
     {
-        scrollView.InitOffsetOffset(500, OnItemBindData, GetItemWidth, GetItemHeight, 5, getItemPrefabIndex: GetItemPrefabIndex);
+        scrollView.InitOffsetOffset(200, OnItemBindData, GetItemWidth, GetItemHeight);
         // scrollView.InitCenter(itemCount, OnItemBindData, _ => (80, 80), _ => (80, 80));
         // StartCoroutine(Cor());
     }
