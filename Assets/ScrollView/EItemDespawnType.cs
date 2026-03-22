@@ -9,22 +9,16 @@ namespace AsyncScrollView
     /// </summary>
     public enum EItemDespawnType : byte
     {
-        /// <summary>
-        /// 设置元素失活
-        /// </summary>
-        [InspectorName("set GameObject active false")]
+        [InspectorName("设置元素隐藏")]
         SetActiveFalse,
         
-        /// <summary>
-        /// 移动元素到不可见位置
-        /// </summary>
-        [InspectorName("move GameObject far away from scroll")]
+        [InspectorName("移动元素到不可见位置")]
         MoveInvisiblePosition,
         
-        /// <summary>
-        /// 不处理
-        /// </summary>
-        [InspectorName("do nothing")]
+        [InspectorName("设置元素缩放为0")]
+        SetScaleZero,
+        
+        [InspectorName("不处理")]
         None,
     }
 }

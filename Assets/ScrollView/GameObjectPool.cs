@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace AsyncScrollView
 {
@@ -16,7 +18,7 @@ namespace AsyncScrollView
         /// <summary>
         /// 所有没有使用的预制体数据
         /// </summary>
-        private List<GameObject>[] _freeGameObjects;
+        private Queue<GameObject>[] _freeGameObjects;
         
         /// <summary>
         /// 所有item预制体模板
@@ -31,12 +33,12 @@ namespace AsyncScrollView
         /// <summary>
         /// 所有item预制体缓存
         /// </summary>
-        private readonly Dictionary<GameObject, List<GameObject>> _itemCache = new Dictionary<GameObject, List<GameObject>>();
+        private readonly Dictionary<GameObject, Queue<GameObject>> _itemCache = new Dictionary<GameObject, Queue<GameObject>>();
         
         /// <summary>
         /// 元素回收类型
         /// </summary>
-        private EItemDespawnType _itemDespawnType = EItemDespawnType.SetActiveFalse;
+        private EItemDespawnType _itemDespawnType = EItemDespawnType.SetScaleZero;
 
         /// <summary>
         /// 滑动列表数据
@@ -55,15 +57,23 @@ namespace AsyncScrollView
                     var list = _freeGameObjects[pair.Value];
                     if (null == list)
                     {
-                        list = new List<GameObject>();
+                        list = new Queue<GameObject>();
                         _freeGameObjects[pair.Value] = list;
                     }
                     // 做回收时处理
-                    if (_itemDespawnType == EItemDespawnType.SetActiveFalse)
+                    switch (_itemDespawnType)
                     {
-                        pair.Key.SetActive(false);
+                        case EItemDespawnType.MoveInvisiblePosition:
+                            pair.Key.transform.localPosition = InvisiblePosition;
+                            break;
+                        case EItemDespawnType.SetScaleZero:
+                            pair.Key.transform.localScale = Vector3.zero;
+                            break;
+                        case EItemDespawnType.SetActiveFalse:
+                            pair.Key.gameObject.SetActive(false);
+                            break;
                     }
-                    list.Add(pair.Key);
+                    list.Enqueue(pair.Key);
                 }
                 _usingGameObjects.Clear();
                 _itemCache.Clear();
@@ -95,7 +105,7 @@ namespace AsyncScrollView
             this._itemDespawnType = itemDespawnType;
             this._itemPrefabs = data.ItemPrefabs;
             // 构建新的缓存列表
-            _freeGameObjects = new List<GameObject>[_itemPrefabs.Length];
+            _freeGameObjects = new Queue<GameObject>[_itemPrefabs.Length];
             _usingGameObjects.Clear();
             // 遍历，根据预制体模板查看是否复用实例化对象
             for (var i = 0; i < _itemPrefabs.Length; i++)
@@ -122,34 +132,38 @@ namespace AsyncScrollView
             var list = _freeGameObjects[itemIndex];
             if (null == list)
             {
-                list = new List<GameObject>();
+                list = new Queue<GameObject>();
                 _freeGameObjects[itemIndex] = list;
             }
 
             bool isNew = false;
             if (list.Count > 0)
             {
-                itemData.ItemInstance = list[^1];
-                list.RemoveAt(list.Count - 1);
-                itemData.ItemInstance.transform.localPosition = Vector3.zero;
+                itemData.ItemInstance = list.Dequeue();
                 itemData.ItemInstance.transform.localRotation = Quaternion.identity;
-            
-                // 设置从缓存池中取出
-                switch (_itemDespawnType)
-                {
-                    case EItemDespawnType.SetActiveFalse:
-                        itemData.ItemInstance.SetActive(true);
-                        break;
-                }
             }
             else
             {
                 var instantiateItem = Object.Instantiate(_itemPrefabs[itemIndex], itemData.ItemContainer);
-                instantiateItem.transform.localPosition = Vector3.zero;
                 instantiateItem.transform.localRotation = Quaternion.identity;
                 itemData.ItemInstance = instantiateItem;
                 isNew = true;
             }
+            
+            // 设置从缓存池中取出
+            switch (_itemDespawnType)
+            {
+                case EItemDespawnType.SetActiveFalse:
+                    itemData.ItemInstance.SetActive(true);
+                    break;
+                case EItemDespawnType.SetScaleZero:
+                    itemData.ItemInstance.transform.localScale = Vector3.one;
+                    break;
+                case EItemDespawnType.MoveInvisiblePosition:
+                    itemData.ItemInstance.transform.localPosition = Vector3.zero;
+                    break;
+            }
+            
             itemData.InstanceDataIndex = itemData.DataIndex;
             itemData.ItemInstance.gameObject.name = itemData.DataIndex.ToString();
             itemData.ItemInstance.GetComponent<RectTransform>().anchoredPosition = itemData.ItemPosition;
@@ -178,12 +192,19 @@ namespace AsyncScrollView
             var list = _freeGameObjects[itemIndex];
             if (null == list)
             {
-                list = new List<GameObject>();
+                list = new Queue<GameObject>();
                 _freeGameObjects[itemIndex] = list;
             }
-            list.Add(data.ItemInstance);
+            list.Enqueue(data.ItemInstance);
             data.ItemInstance.gameObject.name = "Free";
-            _data.OnItemUnbindData?.Invoke((data.InstanceDataIndex, data.ItemInstance));
+            try
+            {
+                _data.OnItemUnbindData?.Invoke((data.InstanceDataIndex, data.ItemInstance));
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Item回池刷新异常，数据下标：{data.InstanceDataIndex}，{ex.Message}\n{ex.StackTrace}");
+            }
             // 当回收时，根据回收类型对预制体进行相应操作
             switch (_itemDespawnType)
             {
@@ -192,6 +213,9 @@ namespace AsyncScrollView
                     break;
                 case EItemDespawnType.MoveInvisiblePosition:
                     data.ItemInstance.transform.localPosition = InvisiblePosition;
+                    break;
+                case EItemDespawnType.SetScaleZero:
+                    data.ItemInstance.transform.localScale = Vector3.zero;
                     break;
             }
             data.ItemInstance = null;

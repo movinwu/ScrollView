@@ -51,7 +51,7 @@ namespace AsyncScrollView
         /// <summary>
         /// item布局
         /// </summary>
-        public EScrollViewItemLayout ItemLayout = EScrollViewItemLayout.Left2Right_Up2Down;
+        public EScrollViewItemLayout ItemLayout = EScrollViewItemLayout.Left2RightUp2Down;
 
         /// <summary>
         /// 当item绑定数据显示时调用

@@ -125,6 +125,11 @@ namespace AsyncScrollView
         /// </summary>
         private bool _forceCenter = false;
 
+        /// <summary>
+        /// 标脏
+        /// </summary>
+        private bool _dirty = false;
+
         public void Init(ScrollView scrollView, int startIndex, float viewportOffset, float itemOffset, bool forceCenter)
         {
             _isInited = false;
@@ -132,6 +137,7 @@ namespace AsyncScrollView
             _itemDataRoot = _scrollView.RootTransform;
             _isAutoScrolling = false; // 中断任何可能的自动滚动任务
             _forceCenter = forceCenter;
+            _dirty = true;
 
             if (null == _scrollView
                 || null == _scrollView.scrollRect
@@ -165,8 +171,8 @@ namespace AsyncScrollView
             // 初始化content的锚点和root的锚点
             switch (Data.ItemLayout)
             {
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Left2Right_Up2Down:
+                case EScrollViewItemLayout.Up2DownLeft2Right:
+                case EScrollViewItemLayout.Left2RightUp2Down:
                     _contentCache.anchorMin = Vector2.up;
                     _contentCache.anchorMax = Vector2.up;
                     _contentCache.pivot = Vector2.up;
@@ -174,8 +180,8 @@ namespace AsyncScrollView
                     _itemDataRoot.anchorMax = Vector2.up;
                     _itemDataRoot.pivot = Vector2.up;
                     break;
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                case EScrollViewItemLayout.Left2Right_Down2Up:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
+                case EScrollViewItemLayout.Left2RightDown2Up:
                     _contentCache.anchorMin = Vector2.zero;
                     _contentCache.anchorMax = Vector2.zero;
                     _contentCache.pivot = Vector2.zero;
@@ -183,8 +189,8 @@ namespace AsyncScrollView
                     _itemDataRoot.anchorMax = Vector2.zero;
                     _itemDataRoot.pivot = Vector2.zero;
                     break;
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
+                case EScrollViewItemLayout.Up2DownRight2Left:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
                     _contentCache.anchorMin = Vector2.one;
                     _contentCache.anchorMax = Vector2.one;
                     _contentCache.pivot = Vector2.one;
@@ -192,8 +198,8 @@ namespace AsyncScrollView
                     _itemDataRoot.anchorMax = Vector2.one;
                     _itemDataRoot.pivot = Vector2.one;
                     break;
-                case EScrollViewItemLayout.Down2Up_Right2Left:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
+                case EScrollViewItemLayout.Down2UpRight2Left:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
                     _contentCache.anchorMin = Vector2.right;
                     _contentCache.anchorMax = Vector2.right;
                     _contentCache.pivot = Vector2.right;
@@ -216,49 +222,49 @@ namespace AsyncScrollView
                 centerPosition.y = (Mathf.Max(viewportSize.y, _maxSizeCache.height) - viewportSize.y) / 2f;
                 switch (Data.ItemLayout)
                 {
-                    case EScrollViewItemLayout.Left2Right_Up2Down:
+                    case EScrollViewItemLayout.Left2RightUp2Down:
                         _itemPositionOffset.x = Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = -Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         centerPosition.x = -centerPosition.x;
                         _visibleWindowPositionCache = centerPosition.y;
                         break;
-                    case EScrollViewItemLayout.Right2Left_Up2Down:
+                    case EScrollViewItemLayout.Right2LeftUp2Down:
                         _itemPositionOffset.x = -Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = -Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         _visibleWindowPositionCache = centerPosition.y;
                         break;
-                    case EScrollViewItemLayout.Left2Right_Down2Up:
+                    case EScrollViewItemLayout.Left2RightDown2Up:
                         _itemPositionOffset.x = Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         centerPosition.x = -centerPosition.x;
                         _visibleWindowPositionCache = centerPosition.y;
                         centerPosition.y = -centerPosition.y;
                         break;
-                    case EScrollViewItemLayout.Right2Left_Down2Up:
+                    case EScrollViewItemLayout.Right2LeftDown2Up:
                         _itemPositionOffset.x = -Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         _visibleWindowPositionCache = centerPosition.y;
                         centerPosition.y = -centerPosition.y;
                         break;
-                    case EScrollViewItemLayout.Up2Down_Left2Right:
+                    case EScrollViewItemLayout.Up2DownLeft2Right:
                         _itemPositionOffset.x = Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = -Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         _visibleWindowPositionCache = centerPosition.x;
                         centerPosition.x = -centerPosition.x;
                         break;
-                    case EScrollViewItemLayout.Up2Down_Right2Left:
+                    case EScrollViewItemLayout.Up2DownRight2Left:
                         _itemPositionOffset.x = -Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = -Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         _visibleWindowPositionCache = centerPosition.x;
                         break;
-                    case EScrollViewItemLayout.Down2Up_Left2Right:
+                    case EScrollViewItemLayout.Down2UpLeft2Right:
                         _itemPositionOffset.x = Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         centerPosition.y = -centerPosition.y;
                         _visibleWindowPositionCache = centerPosition.x;
                         centerPosition.x = -centerPosition.x;
                         break;
-                    case EScrollViewItemLayout.Down2Up_Right2Left:
+                    case EScrollViewItemLayout.Down2UpRight2Left:
                         _itemPositionOffset.x = -Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         centerPosition.y = -centerPosition.y;
@@ -284,8 +290,10 @@ namespace AsyncScrollView
         /// 扩张（增加或减少数据数量，item位置和content位置不会变化）
         /// </summary>
         /// <param name="newItemCount"></param>
-        public void Expand(int newItemCount)
+        /// <param name="expandTrail">从末尾扩张，默认true</param>
+        public void Expand(int newItemCount, bool expandTrail)
         {
+            var preMaxSize = _maxSizeCache;
             _maxSizeCache = CalculateWidthHeight();
             var viewportSize = _scrollView.scrollRect.viewport.rect.size;
             ResetContentSize(viewportSize);
@@ -296,28 +304,57 @@ namespace AsyncScrollView
             {
                 switch (Data.ItemLayout)
                 {
-                    case EScrollViewItemLayout.Left2Right_Down2Up:
-                    case EScrollViewItemLayout.Down2Up_Left2Right:
+                    case EScrollViewItemLayout.Left2RightDown2Up:
+                    case EScrollViewItemLayout.Down2UpLeft2Right:
                         _itemPositionOffset.x = Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         break;
-                    case EScrollViewItemLayout.Right2Left_Down2Up:
-                    case EScrollViewItemLayout.Down2Up_Right2Left:
+                    case EScrollViewItemLayout.Right2LeftDown2Up:
+                    case EScrollViewItemLayout.Down2UpRight2Left:
                         _itemPositionOffset.x = -Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         break;
-                    case EScrollViewItemLayout.Left2Right_Up2Down:
-                    case EScrollViewItemLayout.Up2Down_Left2Right:
+                    case EScrollViewItemLayout.Left2RightUp2Down:
+                    case EScrollViewItemLayout.Up2DownLeft2Right:
                         _itemPositionOffset.x = Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = -Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         break;
-                    case EScrollViewItemLayout.Right2Left_Up2Down:
-                    case EScrollViewItemLayout.Up2Down_Right2Left:
+                    case EScrollViewItemLayout.Right2LeftUp2Down:
+                    case EScrollViewItemLayout.Up2DownRight2Left:
                         _itemPositionOffset.x = -Mathf.Max((viewportSize.x - _maxSizeCache.width) / 2f, 0f);
                         _itemPositionOffset.y = -Mathf.Max((viewportSize.y - _maxSizeCache.height) / 2f, 0f);
                         break;
                 }
             }
+            else
+            {
+                // 不是从末尾扩张，则需要重新计算item的偏移量
+                if (!expandTrail)
+                {
+                    var scrollRect = _scrollView.scrollRect as UIScrollRect;
+                    switch (Data.ItemLayout)
+                    {
+                        case EScrollViewItemLayout.Right2LeftUp2Down:
+                        case EScrollViewItemLayout.Left2RightUp2Down:
+                            scrollRect.OnContentExpand(new Vector2(0, _maxSizeCache.height - preMaxSize.height));
+                            break;
+                        case EScrollViewItemLayout.Left2RightDown2Up:
+                        case EScrollViewItemLayout.Right2LeftDown2Up:
+                            scrollRect.OnContentExpand(new Vector2(0, -(_maxSizeCache.height - preMaxSize.height)));
+                            break;
+                        case EScrollViewItemLayout.Down2UpRight2Left:
+                        case EScrollViewItemLayout.Up2DownRight2Left:
+                            scrollRect.OnContentExpand(new Vector2(_maxSizeCache.width - preMaxSize.width, 0));
+                            break;
+                        case EScrollViewItemLayout.Down2UpLeft2Right:
+                        case EScrollViewItemLayout.Up2DownLeft2Right:
+                            scrollRect.OnContentExpand(new Vector2(-(_maxSizeCache.width - preMaxSize.width), 0));
+                            break;
+                    }
+                }
+            }
+
+            _dirty = true;
         }
 
         /// <summary>
@@ -450,6 +487,24 @@ namespace AsyncScrollView
         }
 
         /// <summary>
+        /// 获取显示的第一个item的数据下标
+        /// </summary>
+        /// <returns>显示的第一个item的数据下标，-1为没有任何item显示</returns>
+        public int GetShownFirstDataIndex()
+        {
+            return _itemData.First?.Value.DataIndex ?? -1;
+        }
+        
+        /// <summary>
+        /// 获取显示的最后一个item的数据下标
+        /// </summary>
+        /// <returns>显示的最后一个item的数据下标，-1为没有任何item显示</returns>
+        public int GetShownLastDataIndex()
+        {
+            return _itemData.Last?.Value.DataIndex ?? -1;
+        }
+
+        /// <summary>
         /// 计算高度和宽度缓存
         /// </summary>
         /// <returns>最大宽度和最大高度</returns>
@@ -461,56 +516,74 @@ namespace AsyncScrollView
             _itemHeightCache = new (float upHeight, float downHeight)[Data.Row];
             for (int i = 0; i < Data.Row; i++)
             {
-                var height = Data.GetItemHeight((i, Data.Row));
-                switch (Data.ItemLayout)
+                try
                 {
-                    case EScrollViewItemLayout.Left2Right_Up2Down:
-                    case EScrollViewItemLayout.Right2Left_Up2Down:
-                    case EScrollViewItemLayout.Up2Down_Left2Right:
-                    case EScrollViewItemLayout.Up2Down_Right2Left:
-                        maxHeight += height.upHeight;
-                        _itemYPositionCache[i] = maxHeight;
-                        maxHeight += height.downHeight;
-                        break;
-                    case EScrollViewItemLayout.Left2Right_Down2Up:
-                    case EScrollViewItemLayout.Right2Left_Down2Up:
-                    case EScrollViewItemLayout.Down2Up_Left2Right:
-                    case EScrollViewItemLayout.Down2Up_Right2Left:
-                        maxHeight += height.downHeight;
-                        _itemYPositionCache[i] = maxHeight;
-                        maxHeight += height.upHeight;
-                        break;
-                }
+                    var height = Data.GetItemHeight((i, Data.Row));
+                    switch (Data.ItemLayout)
+                    {
+                        case EScrollViewItemLayout.Left2RightUp2Down:
+                        case EScrollViewItemLayout.Right2LeftUp2Down:
+                        case EScrollViewItemLayout.Up2DownLeft2Right:
+                        case EScrollViewItemLayout.Up2DownRight2Left:
+                            maxHeight += height.upHeight;
+                            _itemYPositionCache[i] = maxHeight;
+                            maxHeight += height.downHeight;
+                            break;
+                        case EScrollViewItemLayout.Left2RightDown2Up:
+                        case EScrollViewItemLayout.Right2LeftDown2Up:
+                        case EScrollViewItemLayout.Down2UpLeft2Right:
+                        case EScrollViewItemLayout.Down2UpRight2Left:
+                            maxHeight += height.downHeight;
+                            _itemYPositionCache[i] = maxHeight;
+                            maxHeight += height.upHeight;
+                            break;
+                    }
 
-                _itemHeightCache[i] = height;
+                    _itemHeightCache[i] = height;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"获取列表高度异常，行数：{i}，{ex.Message}\n{ex.StackTrace}");
+                    _itemHeightCache[i] = (0, 0);
+                    _itemYPositionCache[i] = maxHeight;
+                }
             }
 
             _itemXPositionCache = new float[Data.Col];
             _itemWidthCache = new (float leftWidth, float rightWidth)[Data.Col];
             for (int i = 0; i < Data.Col; i++)
             {
-                var width = Data.GetItemWidth((i, Data.Col));
-                switch (Data.ItemLayout)
+                try
                 {
-                    case EScrollViewItemLayout.Left2Right_Up2Down:
-                    case EScrollViewItemLayout.Left2Right_Down2Up:
-                    case EScrollViewItemLayout.Up2Down_Left2Right:
-                    case EScrollViewItemLayout.Down2Up_Left2Right:
-                        maxWidth += width.leftWidth;
-                        _itemXPositionCache[i] = maxWidth;
-                        maxWidth += width.rightWidth;
-                        break;
-                    case EScrollViewItemLayout.Right2Left_Up2Down:
-                    case EScrollViewItemLayout.Right2Left_Down2Up:
-                    case EScrollViewItemLayout.Up2Down_Right2Left:
-                    case EScrollViewItemLayout.Down2Up_Right2Left:
-                        maxWidth += width.rightWidth;
-                        _itemXPositionCache[i] = maxWidth;
-                        maxWidth += width.leftWidth;
-                        break;
-                }
+                    var width = Data.GetItemWidth((i, Data.Col));
+                    switch (Data.ItemLayout)
+                    {
+                        case EScrollViewItemLayout.Left2RightUp2Down:
+                        case EScrollViewItemLayout.Left2RightDown2Up:
+                        case EScrollViewItemLayout.Up2DownLeft2Right:
+                        case EScrollViewItemLayout.Down2UpLeft2Right:
+                            maxWidth += width.leftWidth;
+                            _itemXPositionCache[i] = maxWidth;
+                            maxWidth += width.rightWidth;
+                            break;
+                        case EScrollViewItemLayout.Right2LeftUp2Down:
+                        case EScrollViewItemLayout.Right2LeftDown2Up:
+                        case EScrollViewItemLayout.Up2DownRight2Left:
+                        case EScrollViewItemLayout.Down2UpRight2Left:
+                            maxWidth += width.rightWidth;
+                            _itemXPositionCache[i] = maxWidth;
+                            maxWidth += width.leftWidth;
+                            break;
+                    }
 
-                _itemWidthCache[i] = width;
+                    _itemWidthCache[i] = width;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"获取列表宽度异常，列数：{i}，{ex.Message}\n{ex.StackTrace}");
+                    _itemWidthCache[i] = (0, 0);
+                    _itemXPositionCache[i] = maxWidth;
+                }
             }
             return (maxWidth, maxHeight);
         }
@@ -535,28 +608,28 @@ namespace AsyncScrollView
         {
             if (Data.ItemCount <= 0) return 0f;
             
+            var position = 0f;
+            var size = GetVisibleWindowSize();
             float sizeMax = 0f;
             switch (Data.ItemLayout)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                    case EScrollViewItemLayout.Right2Left_Up2Down:
-                    case EScrollViewItemLayout.Left2Right_Down2Up:
-                    case EScrollViewItemLayout.Right2Left_Down2Up:
+                case EScrollViewItemLayout.Left2RightUp2Down:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
+                case EScrollViewItemLayout.Left2RightDown2Up:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
                     sizeMax = _maxSizeCache.height;
                     break;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                    case EScrollViewItemLayout.Down2Up_Left2Right:
-                    case EScrollViewItemLayout.Down2Up_Right2Left:
-                    case EScrollViewItemLayout.Up2Down_Right2Left:
+                case EScrollViewItemLayout.Up2DownLeft2Right:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
+                case EScrollViewItemLayout.Down2UpRight2Left:
+                case EScrollViewItemLayout.Up2DownRight2Left:
                     sizeMax = _maxSizeCache.width;
                     break;
             }
-            var position = 0f;
-            var size = GetVisibleWindowSize();
-            // 不足一屏的，不会产生跳转
-            if (size >= sizeMax)
+            // 判断不足一屏
+            if (sizeMax <= size)
             {
-                return position;
+                return 0;
             }
             // 获取item位置
             position = GetVisibleItemPosition(index / Data.ItemCountOneLine);
@@ -585,15 +658,15 @@ namespace AsyncScrollView
         {
             switch (Data.ItemLayout)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
+                case EScrollViewItemLayout.Left2RightUp2Down:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
+                case EScrollViewItemLayout.Left2RightDown2Up:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
                     return _scrollView.scrollRect.viewport.rect.size.y;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
+                case EScrollViewItemLayout.Up2DownLeft2Right:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
+                case EScrollViewItemLayout.Up2DownRight2Left:
+                case EScrollViewItemLayout.Down2UpRight2Left:
                     return _scrollView.scrollRect.viewport.rect.size.x;
             }
             return 0f;
@@ -606,21 +679,20 @@ namespace AsyncScrollView
         private float GetVisibleWindowPosition()
         {
             var visibleWindow = _contentCache.anchoredPosition;
-            // 当前滚动位置
             switch (Data.ItemLayout)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                    return visibleWindow.y;
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
-                    return -visibleWindow.y;
-                case EScrollViewItemLayout.Down2Up_Right2Left:
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                    return visibleWindow.x;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                    return -visibleWindow.x;
+                case EScrollViewItemLayout.Left2RightUp2Down:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
+                    return Mathf.RoundToInt(visibleWindow.y * ApproximatelyNumber) / ApproximatelyNumber;
+                case EScrollViewItemLayout.Left2RightDown2Up:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
+                    return Mathf.RoundToInt(-visibleWindow.y * ApproximatelyNumber) / ApproximatelyNumber;
+                case EScrollViewItemLayout.Down2UpRight2Left:
+                case EScrollViewItemLayout.Up2DownRight2Left:
+                    return Mathf.RoundToInt(visibleWindow.x * ApproximatelyNumber) / ApproximatelyNumber;
+                case EScrollViewItemLayout.Up2DownLeft2Right:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
+                    return Mathf.RoundToInt(-visibleWindow.x * ApproximatelyNumber) / ApproximatelyNumber;
             }
             return 0f;
         }
@@ -636,18 +708,18 @@ namespace AsyncScrollView
 
             switch (Data.ItemLayout)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
+                case EScrollViewItemLayout.Left2RightUp2Down:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
                     return _itemHeightCache[rowOrColIndex];
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
+                case EScrollViewItemLayout.Left2RightDown2Up:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
                     var height = _itemHeightCache[rowOrColIndex];
                     return (height.downHeight, height.upHeight);
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
+                case EScrollViewItemLayout.Up2DownLeft2Right:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
                     return _itemWidthCache[rowOrColIndex];
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
+                case EScrollViewItemLayout.Up2DownRight2Left:
+                case EScrollViewItemLayout.Down2UpRight2Left:
                     var width = _itemWidthCache[rowOrColIndex];
                     return (width.rightWidth, width.leftWidth);
             }
@@ -665,15 +737,15 @@ namespace AsyncScrollView
 
             switch (Data.ItemLayout)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
+                case EScrollViewItemLayout.Left2RightUp2Down:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
+                case EScrollViewItemLayout.Left2RightDown2Up:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
                     return _itemYPositionCache[rowOrColIndex];
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
+                case EScrollViewItemLayout.Up2DownLeft2Right:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
+                case EScrollViewItemLayout.Up2DownRight2Left:
+                case EScrollViewItemLayout.Down2UpRight2Left:
                     return _itemXPositionCache[rowOrColIndex];
             }
             return 0f;
@@ -687,20 +759,20 @@ namespace AsyncScrollView
         {
             switch (Data.ItemLayout)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
+                case EScrollViewItemLayout.Left2RightUp2Down:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
                     _contentCache.anchoredPosition = new Vector2(0f, position);
                     break;
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
+                case EScrollViewItemLayout.Left2RightDown2Up:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
                     _contentCache.anchoredPosition = new Vector2(0f, -position);
                     break;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
+                case EScrollViewItemLayout.Up2DownLeft2Right:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
                     _contentCache.anchoredPosition = new Vector2(-position, 0f);
                     break;
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
+                case EScrollViewItemLayout.Up2DownRight2Left:
+                case EScrollViewItemLayout.Down2UpRight2Left:
                     _contentCache.anchoredPosition = new Vector2(position, 0f);
                     break;
             }
@@ -766,6 +838,7 @@ namespace AsyncScrollView
                 DataIndex = dataIndex
             };
             SyncItemDataPosition(newItem);
+            
             return newItem;
         }
 
@@ -777,14 +850,19 @@ namespace AsyncScrollView
             if (_itemData.Count <= 0) return;
             var item = _itemData.First;
             _freeItemData.Add(item.Value);
+            item.Value.DespawnInstance();
             _itemData.RemoveFirst();
         }
 
+        /// <summary>
+        /// 释放最后一个item数据
+        /// </summary>
         private void DespawnLastItem()
         {
             if (_itemData.Count <= 0) return;
             var item = _itemData.Last;
             _freeItemData.Add(item.Value);
+            item.Value.DespawnInstance();
             _itemData.RemoveLast();
         }
 
@@ -823,7 +901,7 @@ namespace AsyncScrollView
             var position = Vector2.zero;
             switch (Data.ItemLayout)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
+                case EScrollViewItemLayout.Left2RightUp2Down:
                     rowCol.x = dataIndex / Data.ItemCountOneLine;
                     rowCol.y = dataIndex % Data.ItemCountOneLine;
                     position.x = _itemXPositionCache[rowCol.y];
@@ -831,7 +909,7 @@ namespace AsyncScrollView
                     position.y += (rowCol.x / Data.Row) * _maxSizeCache.height;
                     position.y = -position.y;
                     break;
-                case EScrollViewItemLayout.Right2Left_Up2Down:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
                     rowCol.x = dataIndex / Data.ItemCountOneLine;
                     rowCol.y = dataIndex % Data.ItemCountOneLine;
                     position.x = _itemXPositionCache[rowCol.y];
@@ -840,14 +918,14 @@ namespace AsyncScrollView
                     position.y = -position.y;
                     position.x = -position.x;
                     break;
-                case EScrollViewItemLayout.Left2Right_Down2Up:
+                case EScrollViewItemLayout.Left2RightDown2Up:
                     rowCol.x = dataIndex / Data.ItemCountOneLine;
                     rowCol.y = dataIndex % Data.ItemCountOneLine;
                     position.x = _itemXPositionCache[rowCol.y];
                     position.y = _itemYPositionCache[rowCol.x % Data.Row];
                     position.y += (rowCol.x / Data.Row) * _maxSizeCache.height;
                     break;
-                case EScrollViewItemLayout.Right2Left_Down2Up:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
                     rowCol.x = dataIndex / Data.ItemCountOneLine;
                     rowCol.y = dataIndex % Data.ItemCountOneLine;
                     position.x = _itemXPositionCache[rowCol.y];
@@ -855,7 +933,7 @@ namespace AsyncScrollView
                     position.y += (rowCol.x / Data.Row) * _maxSizeCache.height;
                     position.x = -position.x;
                     break;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
+                case EScrollViewItemLayout.Up2DownLeft2Right:
                     rowCol.x = dataIndex % Data.ItemCountOneLine;
                     rowCol.y = dataIndex / Data.ItemCountOneLine;
                     position.x = _itemXPositionCache[rowCol.y % Data.Col];
@@ -863,14 +941,14 @@ namespace AsyncScrollView
                     position.x += (rowCol.x / Data.Col) * _maxSizeCache.width;
                     position.y = -position.y;
                     break;
-                case EScrollViewItemLayout.Down2Up_Left2Right:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
                     rowCol.x = dataIndex % Data.ItemCountOneLine;
                     rowCol.y = dataIndex / Data.ItemCountOneLine;
                     position.x = _itemXPositionCache[rowCol.y % Data.Col];
                     position.y = _itemYPositionCache[rowCol.x];
                     position.x += (rowCol.x / Data.Col) * _maxSizeCache.width;
                     break;
-                case EScrollViewItemLayout.Up2Down_Right2Left:
+                case EScrollViewItemLayout.Up2DownRight2Left:
                     rowCol.x = dataIndex % Data.ItemCountOneLine;
                     rowCol.y = dataIndex / Data.ItemCountOneLine;
                     position.x = _itemXPositionCache[rowCol.y % Data.Col];
@@ -879,7 +957,7 @@ namespace AsyncScrollView
                     position.x = -position.x;
                     position.y = -position.y;
                     break;
-                case EScrollViewItemLayout.Down2Up_Right2Left:
+                case EScrollViewItemLayout.Down2UpRight2Left:
                     rowCol.x = dataIndex % Data.ItemCountOneLine;
                     rowCol.y = dataIndex / Data.ItemCountOneLine;
                     position.x = _itemXPositionCache[rowCol.y % Data.Col];
@@ -916,7 +994,7 @@ namespace AsyncScrollView
             {
                 // 直接停止自动滚动的情况
                 if (_autoScrollingSpeed <= 0f // 滚动速度小于等于0
-                    || Mathf.Approximately(_lastAutoScrollingPosition, _autoScrollingTargetPosition)) // 当前滚动位置和目标位置相同
+                    || ApproximatelyEqual(_lastAutoScrollingPosition, _autoScrollingTargetPosition)) // 当前滚动位置和目标位置相同
                 {
                     _isAutoScrolling = false;
                     isInvokeAutoScrollingCallback = true;
@@ -924,7 +1002,7 @@ namespace AsyncScrollView
                 }
                 else
                 {
-                    if (Mathf.Approximately(currentVisibleWindowPosition, _lastAutoScrollingPosition))
+                    if (ApproximatelyEqual(currentVisibleWindowPosition, _lastAutoScrollingPosition))
                     {
                         // 计算下一个自动滚动的位置
                         var time = Time.deltaTime;
@@ -978,7 +1056,7 @@ namespace AsyncScrollView
             {
                 empty = true;
                 // 找到第一个item的下标
-                var lineCount = Mathf.CeilToInt(Data.ItemCount * 1.0f / Data.ItemCountOneLine);
+                var lineCount = (Data.ItemCount - 1) / Data.ItemCountOneLine + 1; // 最后一个item的行下标+1为行数
                 for (int i = 0; i < lineCount; i++)
                 {
                     var itemPosition = GetVisibleItemPosition(i);
@@ -996,8 +1074,9 @@ namespace AsyncScrollView
             }
 
             // 没有偏移量，不更新
-            if (!Mathf.Approximately(offset, 0f) || empty)
+            if (!ApproximatelyEqual(offset, 0f) || empty || _dirty)
             {
+                _dirty = false;
                 // 缓存第一个和最后一个的下标和位置，然后更新到新的下标和位置，最后再比较确定哪些需要回收，哪些需要新增
                 var cachedStartIndex = _itemData.First.Value.DataIndex;
                 var cachedEndIndex = _itemData.Last.Value.DataIndex;
@@ -1143,6 +1222,24 @@ namespace AsyncScrollView
                 _onAutoScrollingCompleted?.Invoke(isAutoScrollingCompleted);
                 _onAutoScrollingCompleted = null;
             }
+        }
+        
+        /// <summary>
+        /// 精度数字，处理浮点数精度
+        /// </summary>
+        private const float ApproximatelyNumber = 100f;
+
+        private static readonly float ApproximatelyNum = 1 / ApproximatelyNumber;
+
+        /// <summary>
+        /// 精度相等
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        internal bool ApproximatelyEqual(float a, float b)
+        {
+            return Mathf.Abs(a - b) < ApproximatelyNum;
         }
     }
 }

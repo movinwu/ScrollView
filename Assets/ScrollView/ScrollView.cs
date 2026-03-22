@@ -42,7 +42,7 @@ namespace AsyncScrollView
         /// <summary>
         /// 回收类型
         /// </summary>
-        [SerializeField, Header("item回收类型")] internal EItemDespawnType itemDespawnType;
+        [SerializeField, Header("item回收类型")] internal EItemDespawnType itemDespawnType = EItemDespawnType.SetScaleZero;
 
         #endregion 序列化
 
@@ -67,6 +67,11 @@ namespace AsyncScrollView
         /// 根节点transform
         /// </summary>
         [NonSerialized] internal RectTransform RootTransform;
+
+        /// <summary>
+        /// error标识
+        /// </summary>
+        [NonSerialized] private bool _isError = false;
 
         #endregion 不序列化
 
@@ -101,30 +106,8 @@ namespace AsyncScrollView
         /// <param name="getItemHeight">获取item高度回调</param>
         /// <param name="getItemWidth">获取item宽度回调</param>
         /// <param name="startIndex">起始索引</param>
-        /// <param name="onItemUnbindData">item解绑数据时回调</param>
-        /// <param name="getItemPrefabIndex">获取item预制体索引回调</param>
-        public void Init(
-            int itemCount,
-            Action<(int dataIndex, GameObject itemInstance)> onItemBindData,
-            Func<(int row, int totalRow), (float upHeight, float downHeight)> getItemHeight,
-            Func<(int col, int totalCol), (float leftWidth, float rightWidth)> getItemWidth,
-            int startIndex = 0,
-            Action<(int dataIndex, GameObject itemInstance)> onItemUnbindData = null,
-            Func<(GameObject[] itemPrefabs, int dataIndex), int> getItemPrefabIndex = null)
-        {
-            InitOffsetOffset(itemCount, onItemBindData, getItemHeight, getItemWidth, startIndex, 0, 0, onItemUnbindData, getItemPrefabIndex);
-        }
-        
-        /// <summary>
-        /// 初始化
-        /// </summary>
-        /// <param name="itemCount">数据数量</param>
-        /// <param name="onItemBindData">item绑定数据时回调</param>
-        /// <param name="getItemHeight">获取item高度回调</param>
-        /// <param name="getItemWidth">获取item宽度回调</param>
-        /// <param name="startIndex">起始索引</param>
         /// <param name="viewportPercent">视口对齐百分比</param>
-        /// <param name="itemPercent">item偏移百分比</param>
+        /// <param name="itemPercent">item对齐百分比</param>
         /// <param name="onItemUnbindData">item解绑数据时回调</param>
         /// <param name="getItemPrefabIndex">获取item预制体索引回调</param>
         public void InitPercentPercent(
@@ -303,10 +286,10 @@ namespace AsyncScrollView
             // 根据设置的滑动方向，确定是否是纵向滑动
             scrollRect.vertical = itemLayout switch
             {
-                EScrollViewItemLayout.Left2Right_Up2Down
-                    or EScrollViewItemLayout.Right2Left_Up2Down
-                    or EScrollViewItemLayout.Left2Right_Down2Up
-                    or EScrollViewItemLayout.Right2Left_Down2Up => true,
+                EScrollViewItemLayout.Left2RightUp2Down
+                    or EScrollViewItemLayout.Right2LeftUp2Down
+                    or EScrollViewItemLayout.Left2RightDown2Up
+                    or EScrollViewItemLayout.Right2LeftDown2Up => true,
                 _ => false
             };
             // 1.滑动列表只能有一种滑动方向，不支持水平和竖直同时可以滑动，优先竖直方向滑动
@@ -355,9 +338,11 @@ namespace AsyncScrollView
                 {
                     RootTransform = root.AddComponent<RectTransform>();
                 }
+                RootTransform.localScale = Vector3.one;
+                RootTransform.localPosition = Vector3.zero;
+                RootTransform.localRotation = Quaternion.identity;
             }
 
-            RootTransform.localScale = Vector3.one;
             RootTransform.sizeDelta = Vector2.zero;
             RootTransform.pivot = Vector2.one * 0.5f;
 
@@ -370,6 +355,8 @@ namespace AsyncScrollView
             // 7. 控制器和缓存池初始化
             ItemDataController.DespawnAllItem();
             GameObjectPool.Init(Data, itemDespawnType);
+
+            _isError = false;
         }
         
         #endregion 初始化
@@ -381,6 +368,24 @@ namespace AsyncScrollView
         {
             ItemDataController?.DespawnAllItem();
             GameObjectPool?.Release();
+        }
+        
+        /// <summary>
+        /// 获取显示的第一个item的index
+        /// </summary>
+        /// <returns>显示的第一个item的index，如果没有显示的item，返回-1</returns>
+        public int GetShownFirstIndex()
+        {
+            return ItemDataController?.GetShownFirstDataIndex() ?? -1;
+        }
+        
+        /// <summary>
+        /// 获取显示的最后一个item的index
+        /// </summary>
+        /// <returns>显示的最后一个item的index，如果没有显示的item，返回-1</returns>
+        public int GetShownLastIndex()
+        {
+            return ItemDataController?.GetShownLastDataIndex() ?? -1;
         }
 
         /// <summary>
@@ -404,7 +409,8 @@ namespace AsyncScrollView
         /// 扩张（增加或减少数据数量，item位置和content位置不会变化）
         /// </summary>
         /// <param name="newItemCount"></param>
-        public void Expand(int newItemCount)
+        /// <param name="expandTrail">是否扩张尾部</param>
+        public void Expand(int newItemCount, bool expandTrail = true)
         {
             if (newItemCount <= 0)
             {
@@ -425,7 +431,23 @@ namespace AsyncScrollView
                     Data.Col = Data.ItemCount / Data.ItemCountOneLine + (Data.ItemCount % Data.ItemCountOneLine > 0 ? 1 : 0);
                 }
             }
-            ItemDataController?.Expand(newItemCount);
+            
+            ItemDataController?.Expand(newItemCount, expandTrail);
+        }
+
+        /// <summary>
+        /// 获取item模板
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        public GameObject GetItemTemplate(int index)
+        {
+            if (index < 0 || index >= itemPrefabs.Length)
+            {
+                return null;
+            }
+
+            return itemPrefabs[index];
         }
         
         #region 跳转
@@ -727,16 +749,16 @@ namespace AsyncScrollView
             var viewportSize = scrollRect.viewport.rect.size;
             switch (itemLayout)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
+                case EScrollViewItemLayout.Left2RightUp2Down:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
+                case EScrollViewItemLayout.Left2RightDown2Up:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
                     return viewportSize.y * viewportPercent;
                     break;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
+                case EScrollViewItemLayout.Up2DownLeft2Right:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
+                case EScrollViewItemLayout.Up2DownRight2Left:
+                case EScrollViewItemLayout.Down2UpRight2Left:
                     return viewportSize.x * viewportPercent;
                     break;
             }
@@ -755,16 +777,16 @@ namespace AsyncScrollView
             
             switch (itemLayout)
             {
-                case EScrollViewItemLayout.Left2Right_Up2Down:
-                case EScrollViewItemLayout.Right2Left_Up2Down:
-                case EScrollViewItemLayout.Left2Right_Down2Up:
-                case EScrollViewItemLayout.Right2Left_Down2Up:
+                case EScrollViewItemLayout.Left2RightUp2Down:
+                case EScrollViewItemLayout.Right2LeftUp2Down:
+                case EScrollViewItemLayout.Left2RightDown2Up:
+                case EScrollViewItemLayout.Right2LeftDown2Up:
                     var itemHeight = Data.GetItemHeight((index / Data.ItemCountOneLine, Data.Row));
                     return (itemHeight.upHeight + itemHeight.downHeight) * itemPercent;
-                case EScrollViewItemLayout.Up2Down_Left2Right:
-                case EScrollViewItemLayout.Down2Up_Left2Right:
-                case EScrollViewItemLayout.Up2Down_Right2Left:
-                case EScrollViewItemLayout.Down2Up_Right2Left:
+                case EScrollViewItemLayout.Up2DownLeft2Right:
+                case EScrollViewItemLayout.Down2UpLeft2Right:
+                case EScrollViewItemLayout.Up2DownRight2Left:
+                case EScrollViewItemLayout.Down2UpRight2Left:
                     var itemWidth = Data.GetItemWidth((index / Data.ItemCountOneLine, Data.Col));
                     return (itemWidth.leftWidth + itemWidth.rightWidth) * itemPercent;
             }
@@ -774,7 +796,20 @@ namespace AsyncScrollView
 
         private void Update()
         {
-            ItemDataController?.Tick();
+            if (_isError)
+            {
+                return;
+            }
+
+            try
+            {
+                ItemDataController?.Tick();
+            }
+            catch (Exception ex)
+            {
+                _isError = true;
+                Debug.LogError($"列表刷新异常，{ex.Message}\n{ex.StackTrace}");
+            }
         }
 
         private void OnDestroy()

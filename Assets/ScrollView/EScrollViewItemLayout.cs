@@ -7,52 +7,28 @@ namespace AsyncScrollView
     /// </summary>
     public enum EScrollViewItemLayout : byte
     {
-        /// <summary>
-        /// 先从左到右，再从上到下
-        /// </summary>
-        [InspectorName("left --> right, then up --> down")]
-        Left2Right_Up2Down,
+        [InspectorName("上->下，同行左->右")]
+        Left2RightUp2Down,
         
-        /// <summary>
-        /// 先从右到左，再从上到下
-        /// </summary>
-        [InspectorName("right --> left, then up --> down")]
-        Right2Left_Up2Down,
+        [InspectorName("上->下，同行右->左")]
+        Right2LeftUp2Down,
         
-        /// <summary>
-        /// 先从左到右，再从下到上
-        /// </summary>
-        [InspectorName("left --> right, then down --> up")]
-        Left2Right_Down2Up,
+        [InspectorName("下->上，同行左->右")]
+        Left2RightDown2Up,
         
-        /// <summary>
-        /// 先从右到左，再从下到上
-        /// </summary>
-        [InspectorName("right --> left, then down --> up")]
-        Right2Left_Down2Up,
+        [InspectorName("下->上，同行右->左")]
+        Right2LeftDown2Up,
         
-        /// <summary>
-        /// 先从上到下，再从左到右
-        /// </summary>
-        [InspectorName("up --> down, then left --> right")]
-        Up2Down_Left2Right,
+        [InspectorName("左->右，同列上->下")]
+        Up2DownLeft2Right,
         
-        /// <summary>
-        /// 先从上到下，再从右到左
-        /// </summary>
-        [InspectorName("up --> down, then right --> left")]
-        Up2Down_Right2Left,
+        [InspectorName("右->左，同列上->下")]
+        Up2DownRight2Left,
         
-        /// <summary>
-        /// 先从下到上，再从左到右
-        /// </summary>
-        [InspectorName("down --> up, then left --> right")]
-        Down2Up_Left2Right,
+        [InspectorName("左->右，同列下->上")]
+        Down2UpLeft2Right,
         
-        /// <summary>
-        /// 先从下到上，再从右到左
-        /// </summary>
-        [InspectorName("down --> up, then right --> left")]
-        Down2Up_Right2Left,
+        [InspectorName("右->左，同列下->上")]
+        Down2UpRight2Left,
     }
 }

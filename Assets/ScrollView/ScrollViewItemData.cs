@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace AsyncScrollView
@@ -81,8 +82,15 @@ namespace AsyncScrollView
         {
             // 实例化
             var isNew = _dataController.GameObjectPool.Spawn(this);
-            // 调用刷新委托，刷新数据
-            _dataController.Data.OnItemBindData?.Invoke((InstanceDataIndex, ItemInstance));
+            try
+            {
+                // 调用刷新委托，刷新数据
+                _dataController.Data.OnItemBindData?.Invoke((InstanceDataIndex, ItemInstance));
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"刷新列表item异常，数据下标：{InstanceDataIndex}， {ex.Message}\n{ex.StackTrace}");
+            }
             return isNew;
         }
 
@@ -97,6 +105,7 @@ namespace AsyncScrollView
                 _dataController.Data.OnItemUnbindData?.Invoke((InstanceDataIndex, ItemInstance));
                 _dataController.GameObjectPool.Despawn(this);
                 ItemInstance = null;
+                _isInstanceDirty = true;
             }
         }
     }
